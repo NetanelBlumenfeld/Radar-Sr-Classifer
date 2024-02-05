@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 
 import torch
-from gestures.network.metric.loss import LossFactory, LossType
+from gestures.network.metric.metric_factory import LossFactory, LossType
 
 
 class MetricTracker:
@@ -11,7 +11,10 @@ class MetricTracker:
         self, kind: str, metrics_names: list[LossType], metric_wights: list[float]
     ):
         assert len(metrics_names) == len(metric_wights)
-        assert sum(metric_wights) == 1
+        if kind not in ["loss", "acc"]:
+            raise ValueError(f"kind '{kind}' not recognized")
+        if kind == "loss":
+            assert sum(metric_wights) == 1
         self.kind = kind
         self.name = kind + "_" + self._get_metric_name(metrics_names, metric_wights)
         self.dict_tracker = self._get_dict_tracker(metrics_names, metric_wights)
@@ -66,30 +69,6 @@ class MetricTracker:
             metric["values"].append(sub_loss.item())
         self.loss.append(loss.item())
 
-        if self.kind == "loss":
-            return loss
-
-
-class LossMetric:
-    def __init__(self, metric_function, kind):
-        self.metric_function = metric_function
-        self.name = kind + "_" + metric_function.name
-        self.running_total = 0
-        self.values = []
-        self.kind = kind
-
-    @property
-    def value(self) -> dict[str, float]:
-        return {self.kind: sum(self.values) / self.running_total}
-
-    def reset(self):
-        self.values = []
-        self.running_total = 0
-
-    def update(self, outputs: torch.Tensor, labels: torch.Tensor):
-        self.running_total += 1
-        loss = self.metric_function(outputs, labels)
-        self.values.append(loss.item())
         if self.kind == "loss":
             return loss
 

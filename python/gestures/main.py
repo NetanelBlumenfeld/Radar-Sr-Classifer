@@ -12,8 +12,8 @@ if __name__ == "__main__":
 
     # loop for different ds factors
     dp_cfg = cfg.data_preprocessing_cfg
-    for ds in [1, 2, 4, 8]:
-        # extra_info = f"ds_{ds}"
+    for ds in [4]:
+        extra_info = None
         dp_cfg["ds_factor"] = ds
 
         # getting data loaders

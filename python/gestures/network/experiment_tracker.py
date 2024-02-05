@@ -181,8 +181,8 @@ class BaseTensorBoardTracker(CallbackProtocol):
                 batch = batch
 
                 outputs = model(batch)
-                preds = outputs[0] if task == "sr_classifier" else outputs
-                class_labels = labels[0] if task == "sr_classifier" else labels
+                preds = outputs[1] if task == "sr_classifier" else outputs
+                class_labels = labels[1] if task == "sr_classifier" else labels
 
                 pred_labels = preds.cpu().detach().numpy().reshape(-1, 12)
 

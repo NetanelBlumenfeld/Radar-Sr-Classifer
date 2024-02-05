@@ -1,3 +1,4 @@
+import os
 from typing import Any
 
 import torch
@@ -5,6 +6,15 @@ import torch.optim.lr_scheduler as lr_scheduler
 from gestures.network.experiment_tracker import CallbackHandler
 from gestures.network.metric.metric_tracker import MetricTracker
 from torch.utils.data.dataloader import DataLoader
+
+
+def get_best_model_paths(base_dir):
+    best_model_dir = os.path.join(base_dir, "model")
+    res = []
+    for file_name in os.listdir(best_model_dir):
+        if file_name.endswith("pth"):
+            res.append(best_model_dir + "/" + file_name)
+    return res
 
 
 class Runner:
@@ -67,7 +77,16 @@ class Runner:
             self.callbacks.on_epoch_end(i, logs)
             self.lr_s.step()
             logs["train_info"]["lr"] = self.optimizer.param_groups[0]["lr"]
+
         self.callbacks.on_train_end(logs)
+        self.loss_metric.reset()
+        self.acc_metric.reset()
+        for batch, labels in self.loader_test:
+            batch, labels = self.model.reshape_to_model_output(
+                batch, labels, self.device
+            )
+            self.acc_metric.update(self.model(batch), labels)
+        print(f"Test accuracy: {self.acc_metric.value}")
 
     def train(self) -> dict[str, Any]:
         self.model.train()

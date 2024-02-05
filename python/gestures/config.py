@@ -1,7 +1,7 @@
 import torch
 from gestures.data_loader.tiny_data_loader import Normalization
 from gestures.network.metric.accuracy import acc_tiny_radar
-from gestures.network.metric.loss import LossType
+from gestures.network.metric.metric_factory import LossType
 from gestures.network.models.classifiers.tiny_radar import TinyRadarNN
 from gestures.network.models.sr_classifier.SRCnnTinyRadar import (
     CombinedSRDrlnClassifier,
@@ -14,14 +14,14 @@ if pc == "4090":
     people = 26
 elif pc == "mac":
     people = 2
-    batch_size = 32
+    batch_size = 10
 elif pc == "3080":
     people = 26
     batch_size = 32
 else:
     raise ValueError("Unknown pc")
 
-_ds_scale_factor = 1
+_ds_scale_factor = 4
 data_type = "npy"
 lr = 0.0015
 # data config
@@ -29,16 +29,16 @@ data_cfg = {
     "gestures": [
         "PinchIndex",
         "PinchPinky",
-        "FingerSlider",
-        "FingerRub",
-        "SlowSwipeRL",
-        "FastSwipeRL",
-        "Push",
-        "Pull",
-        "PalmTilt",
-        "Circle",
-        "PalmHold",
-        "NoHand",
+        # "FingerSlider",
+        # "FingerRub",
+        # "SlowSwipeRL",
+        # "FastSwipeRL",
+        # "Push",
+        # "Pull",
+        # "PalmTilt",
+        # "Circle",
+        # "PalmHold",
+        # "NoHand",
     ],
     "people": people,
     "data_type": data_type,
@@ -47,12 +47,12 @@ data_cfg = {
 
 # data preprocessing config
 data_preprocessing_cfg = {
-    "task": "classifier",  # "sr", "classifier", "sr_classifier"
+    "task": "sr",  # "sr", "classifier", "sr_classifier"
     "time_domain": True if data_type == "npy" else False,
     "processed_data": True,
     "pix_norm": Normalization.Range_0_1,
     "ds_factor": _ds_scale_factor,
-    "original_dims": True,
+    "original_dims": False,
 }
 
 _classifier = {
@@ -67,14 +67,17 @@ _classifier = {
 _sr = {
     "model": Drln,
     "model_cfg": {"num_drln_blocks": 2, "scale": _ds_scale_factor, "num_channels": 2},
-    "model_ck": "/home/netanel/code/outputs/sr/Drln_2_loss_L1_0.26_MSSSIM_0.74/ds_4_original_dim_False_pix_norm_Normalization.Range_0_1/2024-01-29_19:43:01/modelloss",  # noqa
-    # "model_ck": "/Users/netanelblumenfeld/Desktop/bgu/Msc/code/outputs/sr/Drln_2_loss_L1_0.26_MSSSIM_0.74/ds_4_original_dim_False_pix_norm_Normalization.Range_0_1/2024-01-29_19:43:01/modelloss",   # noqa
+    # "model_ck": "/home/netanel/code/outputs/sr/Drln_2_loss_L1_0.26_MSSSIM_0.74/ds_4_original_dim_False_pix_norm_Normalization.Range_0_1/2024-01-29_19:43:01/modelloss",  # noqa
+    "model_ck": None,  # noqa
     "loss": {
-        "metrics_names": [LossType.L1, LossType.MSSSIM],
+        "metrics_names": [LossType.L1, LossType.MsssimLoss],
         "metric_wights": [0.26, 0.74],
     },
     "optimizer": {"class": torch.optim.Adam, "args": {"lr": lr}},
-    "accuracy": {"metrics_names": [LossType.L1], "metric_wights": [1]},
+    "accuracy": {
+        "metrics_names": [LossType.L1, LossType.SSIM, LossType.PSNR],
+        "metric_wights": [1, 1, 1],
+    },
 }
 _sr_classifier_models = {
     "model": {

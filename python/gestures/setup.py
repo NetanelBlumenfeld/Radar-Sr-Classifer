@@ -91,7 +91,7 @@ def sr_model(model_cfg: dict, device: torch.device):
     acc = MetricTracker(
         kind="acc",
         metrics_names=model_cfg["accuracy"]["metrics_names"],
-        metric_wights=[1],
+        metric_wights=model_cfg["accuracy"]["metric_wights"],
     )
 
     # models
