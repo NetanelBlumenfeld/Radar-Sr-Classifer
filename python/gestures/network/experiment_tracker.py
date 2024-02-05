@@ -8,6 +8,7 @@ import torch
 from gestures.network.models.basic_model import BasicModel
 from matplotlib import pyplot as plt
 from sklearn.metrics import ConfusionMatrixDisplay, confusion_matrix
+from torch.utils.data.dataloader import DataLoader
 from torch.utils.tensorboard.writer import SummaryWriter
 from tqdm import tqdm
 
@@ -144,11 +145,18 @@ class BaseTensorBoardTracker(CallbackProtocol):
         self.classes_name = classes_name
         self.with_cm = with_cm
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.best_model_path = ""
+        self.best_model_path = os.path.join(base_dir, "model")
 
     def _add_cm(self, trues, preds, title: str):
-        cm = confusion_matrix(np.concatenate(trues), np.concatenate(preds))
-        cm_normalized = cm.astype("float") / cm.sum(axis=1)[:, np.newaxis]
+        cm = confusion_matrix(trues, preds)
+        cm_sum = cm.sum(axis=1)[:, np.newaxis]
+        cm_normalized = np.divide(
+            cm.astype("float"),
+            cm_sum,
+            out=np.zeros_like(cm, dtype=float),
+            where=cm_sum != 0,
+        )
+        # cm_normalized = cm.astype("float") / cm.sum(axis=1)[:, np.newaxis]
         # Create the ConfusionMatrixDisplay instance
         fig, ax = plt.subplots(figsize=(20, 20))
         cm_display = ConfusionMatrixDisplay(
@@ -164,37 +172,48 @@ class BaseTensorBoardTracker(CallbackProtocol):
         """loading the best model and calculate the confusion matrix"""
 
         # TODO - move to another place
-        def _get_preds_for_best_models(model, loader):
-            preds, trues = [], []
+        def _get_preds_for_best_models(model, loader: DataLoader, task: str):
+            preds_list, trues_list = [], []
             for batch, labels in loader:
                 batch, labels = model.reshape_to_model_output(
                     batch, labels, self.device
                 )
                 batch = batch
-                labels[0] = labels[0]
 
                 outputs = model(batch)
-                pred_labels = outputs[1].cpu().detach().numpy().reshape(-1, 12)
-                # pred_labels = outputs.cpu().detach().numpy().reshape(-1, 12)
+                preds = outputs[0] if task == "sr_classifier" else outputs
+                class_labels = labels[0] if task == "sr_classifier" else labels
+
+                pred_labels = preds.cpu().detach().numpy().reshape(-1, 12)
 
                 pred_labels = np.argmax(pred_labels, axis=1)
-                preds.append(pred_labels)
-                trues.append(labels[1].cpu().detach().numpy().reshape(-1))
+                preds_list.append(pred_labels)
+                trues_list.append(class_labels.cpu().detach().numpy().reshape(-1))
                 # trues.append(labels.cpu().detach().numpy().reshape(-1))
 
-            return preds, trues
+            return preds_list, trues_list
 
         if logs is None:
             return
 
         if self.with_cm:
-            model = logs["model"].to(self.device)
-            models = ["max_acc_model.pt", "min_loss_model.pt"]
-            data_loader = logs["data_loader"]
-            for model_name in models:
-                model.load_state_dict(torch.load(self.best_model_path + model_name))
-                preds, trues = _get_preds_for_best_models(model, data_loader)
-                self._add_cm(preds, trues, model_name.split(".")[0])
+            model_cls = logs["model"]
+            task = logs["task"]
+            for file_name in os.listdir(self.best_model_path):
+                if file_name.endswith(".pth"):
+                    model_path = os.path.join(self.best_model_path, file_name)
+                    model, _, _, _ = model_cls.load_model(self.device, model_path)
+                    for data_name in ["data_test", "data_validation"]:
+                        data_loader = logs[data_name]
+                        if task == "classifier" or task == "sr_classifier":
+                            preds, trues = _get_preds_for_best_models(
+                                model, data_loader, task
+                            )
+                            preds = np.concatenate(preds, axis=0)
+                            trues = np.concatenate(trues, axis=0)
+                            matrix_name = f"{data_name}_{file_name.split('.')[0]}"
+                            self._add_cm(preds, trues, matrix_name)
+
         self.writer.close()
 
     def on_epoch_end(self, epoch: int, logs: Optional[dict] = None) -> None:
@@ -248,15 +267,13 @@ class SaveModel(CallbackProtocol):
         value: float,
         value_name: str,
     ):
-        torch.save(
-            {
-                "model_state_dict": model.state_dict(),
-                "optimizer_state_dict": optimizer.state_dict(),
-                "epoch": epoch,
-                "tracked_value": value,
-            },
-            path,
-        )
+        state = {
+            "model": model,
+            "optimizer_state_dict": optimizer.state_dict(),
+            "epoch": epoch,
+            "tracked_value": value,
+        }
+        torch.save(state, path)
         print(f"\nSaved model at - {path}, {value_name} - {value}")
 
     def _set_metric_trackers(self, metrics: list[str], opts: list[str]) -> list[dict]:
@@ -312,7 +329,9 @@ class SaveModel(CallbackProtocol):
             if metric_tracker["operation"](new_value, prev_value) == new_value:
                 value_name = self._construct_filename(metric_tracker, epoch)
                 metric_tracker["value"] = new_value
-                path = os.path.join(self.save_path + metric_tracker["metric_name"])
+                path = os.path.join(
+                    self.save_path, metric_tracker["metric_name"] + ".pth"
+                )
                 self._save(
                     path=path,
                     model=logs["model"],

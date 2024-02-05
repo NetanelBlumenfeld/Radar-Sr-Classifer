@@ -12,19 +12,14 @@ class BasicModel(nn.Module):
         cls,
         device: torch.device,
         model_dir: str,
-        model_params: dict,
         optimizer_class=None,
         optimizer_args=None,
-        *args,
-        **kwargs
     ):
         # Create an instance of the subclass with provided arguments
-        model = cls(**model_params)
-        model.to(device)
 
         # Load the checkpoint
         checkpoint = torch.load(model_dir, map_location=device)
-        model.load_state_dict(checkpoint["model_state_dict"])
+        model = checkpoint["model"].to(device)
 
         # Initialize the optimizer
         optimizer = None

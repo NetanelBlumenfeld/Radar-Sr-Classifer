@@ -13,20 +13,27 @@ class Runner:
         model: torch.nn.Module,
         loader_train: DataLoader,
         loader_validation: DataLoader,
+        loader_test: DataLoader,
         device: torch.device,
         optimizer: torch.optim.Optimizer,
         loss_metric: MetricTracker,
         acc_metric: MetricTracker,
         callbacks: CallbackHandler,
+        base_dir: str,
+        task: str,
     ):
         self.model = model
         self.device = device
         self.optimizer = optimizer
         self.loader_train = loader_train
         self.loader_validation = loader_validation
+        self.loader_test = loader_test
         self.acc_metric = acc_metric
         self.loss_metric = loss_metric
         self.callbacks = callbacks
+        self.base_dir = base_dir
+        self.task = task
+
         self.lr_s = lr_scheduler.ExponentialLR(optimizer, gamma=0.9995)
 
     def reset(self):
@@ -38,7 +45,8 @@ class Runner:
             "model": self.model,
             "optimizer": self.optimizer,
             "metrics": {"train": None, "val": None},
-            "data_loader": None,
+            "data_test": self.loader_test,
+            "data_validation": self.loader_validation,
             "data_info": {
                 "train": len(self.loader_train),
                 "val": len(self.loader_validation),
@@ -47,6 +55,7 @@ class Runner:
                 "epochs": epochs,
                 "lr": self.optimizer.param_groups[0]["lr"],
             },
+            "task": self.task,
         }
         self.callbacks.on_train_begin(logs)
         for i in range(epochs):
@@ -58,7 +67,6 @@ class Runner:
             self.callbacks.on_epoch_end(i, logs)
             self.lr_s.step()
             logs["train_info"]["lr"] = self.optimizer.param_groups[0]["lr"]
-        logs["data_loader"] = self.loader_validation
         self.callbacks.on_train_end(logs)
 
     def train(self) -> dict[str, Any]:
