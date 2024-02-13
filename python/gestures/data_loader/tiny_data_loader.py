@@ -1,4 +1,3 @@
-from cgi import test
 from enum import Enum, auto
 from functools import partial
 from typing import Callable

@@ -2,7 +2,7 @@ from enum import Enum
 
 import torch.nn as nn
 from gestures.network.metric.loss import LossFunctionTinyRadarNN, MsssimLoss, SsimLoss
-from gestures.network.metric.metrics import Msssim, Psnr, Ssim
+from gestures.network.metric.metrics import AccuracyMetric, Msssim, Psnr, Ssim
 
 
 class LossType(Enum):
@@ -16,9 +16,11 @@ class LossType(Enum):
     MSSSIM = "MSSSIM"
     PSNR = "PSNR"
     TinyLoss = "TinyLoss"
+    ClassifierAccuracy = "ClassifierAccuracy"
 
 
 class LossFactory:
+
     loss_functions = {
         "L1": nn.L1Loss(),
         "MSE": nn.MSELoss(),
@@ -30,6 +32,7 @@ class LossFactory:
         "MSSSIM": Msssim(),
         "PSNR": Psnr(),
         "TinyLoss": LossFunctionTinyRadarNN(),
+        "ClassifierAccuracy": AccuracyMetric(),
     }
 
     @staticmethod

@@ -1,20 +1,20 @@
 import torch
 from gestures.data_loader.tiny_data_loader import Normalization
-from gestures.network.metric.accuracy import acc_tiny_radar
 from gestures.network.metric.metric_factory import LossType
 from gestures.network.models.classifiers.tiny_radar import TinyRadarNN
 from gestures.network.models.sr_classifier.SRCnnTinyRadar import (
     CombinedSRDrlnClassifier,
 )
 from gestures.network.models.super_resolution.drln import Drln
+from gestures.network.models.super_resolution.safmn import SAFMN
 
-pc = "mac"
+pc = "4090"
 if pc == "4090":
-    batch_size = 256
+    batch_size = 32
     people = 26
 elif pc == "mac":
     people = 2
-    batch_size = 10
+    batch_size = 4
 elif pc == "3080":
     people = 26
     batch_size = 32
@@ -29,25 +29,27 @@ data_cfg = {
     "gestures": [
         "PinchIndex",
         "PinchPinky",
-        # "FingerSlider",
-        # "FingerRub",
-        # "SlowSwipeRL",
-        # "FastSwipeRL",
-        # "Push",
-        # "Pull",
-        # "PalmTilt",
-        # "Circle",
-        # "PalmHold",
-        # "NoHand",
+        "FingerSlider",
+        "FingerRub",
+        "SlowSwipeRL",
+        "FastSwipeRL",
+        "Push",
+        "Pull",
+        "PalmTilt",
+        "Circle",
+        "PalmHold",
+        "NoHand",
     ],
     "people": people,
     "data_type": data_type,
 }
+# training config
+training_cfg = {"lr": lr, "epochs": 150, "batch_size": batch_size}
 
 
 # data preprocessing config
 data_preprocessing_cfg = {
-    "task": "sr",  # "sr", "classifier", "sr_classifier"
+    "task": "sr_classifier",  # "sr", "classifier", "sr_classifier"
     "time_domain": True if data_type == "npy" else False,
     "processed_data": True,
     "pix_norm": Normalization.Range_0_1,
@@ -58,25 +60,29 @@ data_preprocessing_cfg = {
 _classifier = {
     "model": TinyRadarNN,
     "model_cfg": {},
-    # "model_ck": "/home/netanel/code/outputs/classifier/TinyRadar_loss_TinyLoss_1/ds_1_original_dim_True_pix_norm_Normalization.Range_0_1/2024-01-23_17:29:27/modelacc", # noqa
+    # "model_ck": "/home/netanel/code/outputs/classifier/TinyRadar_loss_TinyLoss_1/ds_1_original_dim_True_pix_norm_Normalization.Range_0_1_th_not_norm_doppler/2024-02-10_16:54:26/model/acc.pth",  # noqa
     "model_ck": None,
-    "loss": {"metrics_names": [LossType.TinyLoss], "metric_wights": [1]},
+    "loss1": [{"metric": LossType.TinyLoss, "wight": 1}],
     "optimizer": {"class": torch.optim.Adam, "args": {"lr": lr}},
-    "accuracy": acc_tiny_radar,
+    "accuracy": [LossType.ClassifierAccuracy],
 }
 _sr = {
     "model": Drln,
     "model_cfg": {"num_drln_blocks": 2, "scale": _ds_scale_factor, "num_channels": 2},
-    # "model_ck": "/home/netanel/code/outputs/sr/Drln_2_loss_L1_0.26_MSSSIM_0.74/ds_4_original_dim_False_pix_norm_Normalization.Range_0_1/2024-01-29_19:43:01/modelloss",  # noqa
-    "model_ck": None,  # noqa
+    # "model_ck": "/home/netanel/code/outputs/sr/Drln_2_loss_L1_1/ds_4_original_dim_False_pix_norm_Normalization.Range_0_1/2024-02-09_15:03:43/model/loss.pth",  # noqa
+    "model_ck": "/Users/netanelblumenfeld/Desktop/bgu/Msc/code/outputs/sr/Drln_2_loss_L1_1/ds_4_original_dim_False_pix_norm_Normalization.Range_0_1/2024-02-09_15:03:43/model/loss.pth",  # noqa
     "loss": {
         "metrics_names": [LossType.L1, LossType.MsssimLoss],
-        "metric_wights": [0.26, 0.74],
+        "metric_wights": [0.5, 0.5],
     },
+    "loss1": [
+        {"metric": LossType.L1, "wight": 1},
+    ],
+    "acc": [LossType.L1, LossType.MSE],
     "optimizer": {"class": torch.optim.Adam, "args": {"lr": lr}},
     "accuracy": {
-        "metrics_names": [LossType.L1, LossType.SSIM, LossType.PSNR],
-        "metric_wights": [1, 1, 1],
+        "metrics_names": [LossType.PSNR, LossType.SSIM],
+        "metric_wights": [1, 1],
     },
 }
 _sr_classifier_models = {
@@ -86,9 +92,10 @@ _sr_classifier_models = {
         "combined": CombinedSRDrlnClassifier,
     },
     "loss": {
-        "sr": {"wight": 0.5, "loss_type": LossType.L1},
-        "classifier": {"wight": 0.5, "loss_type": LossType.TinyLoss},
+        "sr": {"wight": 0, "loss_type": LossType.L1},
+        "classifier": {"wight": 1, "loss_type": LossType.TinyLoss},
     },
+    "acc": [LossType.ClassifierAccuracy, LossType.MSE, LossType.PSNR, LossType.SSIM],
     "optimizer": {"class": torch.optim.Adam, "args": {"lr": lr}},
 }
 
@@ -97,9 +104,6 @@ model_cfg = {
     "classifier": _classifier,
     "sr": _sr,
 }
-
-# training config
-training_cfg = {"lr": lr, "epochs": 1, "batch_size": batch_size}
 
 
 # call backs config
@@ -118,8 +122,8 @@ _save_model = {
     "args": {
         "base_dir": None,
         "save_best": True,
-        "metrics": ["val_loss", "val_acc"],
-        "opts": ["min", "max"],
+        "metrics": ["val_total_loss"],
+        "opts": ["min"],
     },
 }
 mode = 0

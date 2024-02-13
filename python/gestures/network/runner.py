@@ -1,3 +1,4 @@
+import gc
 import os
 from typing import Any
 
@@ -15,6 +16,15 @@ def get_best_model_paths(base_dir):
         if file_name.endswith("pth"):
             res.append(best_model_dir + "/" + file_name)
     return res
+
+
+def get_models(base_dir, device, model_cls):
+    models = []
+    models_path = get_best_model_paths(base_dir)
+    for p in models_path:
+        model, _, _, _ = model_cls.load_model(device, p)
+        models.append(model)
+    return models
 
 
 class Runner:
@@ -43,6 +53,22 @@ class Runner:
         self.callbacks = callbacks
         self.base_dir = base_dir
         self.task = task
+        self.logs = {
+            "model": self.model,
+            "optimizer": self.optimizer,
+            "metrics": {"train": None, "val": None, "test": None},
+            "data_test": self.loader_test,
+            "data_validation": self.loader_validation,
+            "data_info": {
+                "train": len(self.loader_train),
+                "val": len(self.loader_validation),
+            },
+            "train_info": {
+                "epochs": None,
+                "lr": self.optimizer.param_groups[0]["lr"],
+            },
+            "task": self.task,
+        }
 
         self.lr_s = lr_scheduler.ExponentialLR(optimizer, gamma=0.9995)
 
@@ -51,67 +77,36 @@ class Runner:
         self.loss_metric.reset()
 
     def run(self, epochs: int):
-        logs = {
-            "model": self.model,
-            "optimizer": self.optimizer,
-            "metrics": {"train": None, "val": None},
-            "data_test": self.loader_test,
-            "data_validation": self.loader_validation,
-            "data_info": {
-                "train": len(self.loader_train),
-                "val": len(self.loader_validation),
-            },
-            "train_info": {
-                "epochs": epochs,
-                "lr": self.optimizer.param_groups[0]["lr"],
-            },
-            "task": self.task,
-        }
-        self.callbacks.on_train_begin(logs)
-        for i in range(epochs):
-            self.callbacks.on_epoch_begin(i)
-            logs["metrics"]["train"] = self.train()
-            self.reset()
-            logs["metrics"]["val"] = self.validate()
-            self.reset()
-            self.callbacks.on_epoch_end(i, logs)
-            self.lr_s.step()
-            logs["train_info"]["lr"] = self.optimizer.param_groups[0]["lr"]
+        self.logs["train_info"]["epochs"] = epochs
 
-        self.callbacks.on_train_end(logs)
-        self.loss_metric.reset()
-        self.acc_metric.reset()
-        for batch, labels in self.loader_test:
-            batch, labels = self.model.reshape_to_model_output(
-                batch, labels, self.device
-            )
-            self.acc_metric.update(self.model(batch), labels)
-        print(f"Test accuracy: {self.acc_metric.value}")
+        self.callbacks.on_train_begin(self.logs)
+        for i in range(epochs):
+            print(i)
+            self.callbacks.on_epoch_begin(i)
+            self.logs["metrics"]["train"] = self.train()
+            self.reset()
+            self.logs["metrics"]["val"] = self.validate("val", self.loader_validation)
+            self.reset()
+            self.callbacks.on_epoch_end(i, self.logs)
+            self.lr_s.step()
+            self.logs["train_info"]["lr"] = self.optimizer.param_groups[0]["lr"]
+
+        self.reset()
+        self.logs["metrics"]["test"] = self.test_evaluation()
+        self.callbacks.on_train_end(self.logs)
 
     def train(self) -> dict[str, Any]:
         self.model.train()
-        logs = {"model": self.model, "metrics": {"train": {}, "val": {}}}
 
         for batch, labels in self.loader_train:
             batch, labels = self.model.reshape_to_model_output(
                 batch, labels, self.device
             )
-            self.callbacks.on_batch_begin(logs=logs)
-            logs["metrics"]["train"] = self.train_batch(batch, labels)
-            self.callbacks.on_batch_end(logs=logs)
-        return logs["metrics"]["train"]
-
-    def validate(self):
-        self.model.eval()
-        logs = {"model": self.model, "metrics": {"train": {}, "val": {}}}
-        for batch, labels in self.loader_validation:
-            batch, labels = self.model.reshape_to_model_output(
-                batch, labels, self.device
-            )
-            self.callbacks.on_eval_begin()
-            logs["metrics"]["val"] = self.validate_batch(batch, labels)
-            self.callbacks.on_eval_end(logs=logs)
-        return logs["metrics"]["val"]
+            self.callbacks.on_batch_begin(logs=self.logs)
+            self.logs["metrics"]["train"] = self.train_batch(batch, labels)
+            del batch, labels
+            self.callbacks.on_batch_end(logs=self.logs)
+        return self.logs["metrics"]["train"]
 
     def train_batch(self, batch, labels) -> dict[str, Any]:
         self.optimizer.zero_grad()
@@ -124,8 +119,35 @@ class Runner:
         self.acc_metric.update(outputs, labels)
         return self.loss_metric.value | self.acc_metric.value
 
+    def validate(self, kind: str, dataset: DataLoader, model=None):
+        if model is not None:
+            self.model = model
+        self.model.eval()
+        with torch.no_grad():
+            for batch, labels in dataset:
+                batch, labels = self.model.reshape_to_model_output(
+                    batch, labels, self.device
+                )
+                self.callbacks.on_eval_begin()
+                self.logs["metrics"][kind] = self.validate_batch(batch, labels)
+                del batch, labels
+                self.callbacks.on_eval_end(logs=self.logs)
+        return self.logs["metrics"][kind]
+
     def validate_batch(self, batch, labels) -> dict[str, Any]:
+
         outputs = self.model(batch)
         _ = self.loss_metric.update(outputs, labels)
         self.acc_metric.update(outputs, labels)
+        del outputs, batch, labels
+        gc.collect()
+        torch.cuda.empty_cache()
+
         return self.loss_metric.value | self.acc_metric.value
+
+    def test_evaluation(self):
+        models = get_models(self.base_dir, self.device, self.model)
+        res = []
+        for m in models:
+            res.append(self.validate("test", self.loader_test, m))
+        return res

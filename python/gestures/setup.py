@@ -10,12 +10,11 @@ from gestures.network.experiment_tracker import (
     SaveModel,
     get_time_in_string,
 )
-from gestures.network.metric.accuracy import acc_srcnn_tiny_radar
-from gestures.network.metric.loss import LossFunctionSRTinyRadarNN
 from gestures.network.metric.metric_tracker import (
-    AccuracyMetric,
-    LossMetricSRTinyRadarNN,
-    MetricTracker,
+    AccMetricTracker,
+    AccMetricTrackerSrClassifier,
+    LossMetricTracker,
+    LossMetricTrackerSrClassifier,
 )
 from gestures.network.models.basic_model import BasicModel
 
@@ -48,21 +47,15 @@ def classifier_model(model_cfg: dict, device: torch.device):
         model_cfg (dict): _description_
     """
     # loss
-    loss = MetricTracker(
-        kind="loss",
-        metrics_names=model_cfg["loss"]["metrics_names"],
-        metric_wights=model_cfg["loss"]["metric_wights"],
-    )
+    loss = LossMetricTracker(model_cfg["loss1"])
 
     # acc
-    acc = AccuracyMetric(metric_function=model_cfg["accuracy"])
+    acc = AccMetricTracker(model_cfg["accuracy"])
 
     # models
     model_cls = model_cfg["model"]
     if model_cfg["model_ck"]:
-        model, _, _, _ = model_cls.load_model(
-            device, model_cfg["model_ck"], model_cfg["model_cfg"]
-        )
+        model, _, _, _ = model_cls.load_model(device, model_cfg["model_ck"])
     else:
         model = model_cls(**model_cfg["model_cfg"]).to(device)
 
@@ -80,26 +73,13 @@ def sr_model(model_cfg: dict, device: torch.device):
     Args:
         model_cfg (dict): _description_
     """
-    # loss
-    loss = MetricTracker(
-        kind="loss",
-        metrics_names=model_cfg["loss"]["metrics_names"],
-        metric_wights=model_cfg["loss"]["metric_wights"],
-    )
-
-    # acc
-    acc = MetricTracker(
-        kind="acc",
-        metrics_names=model_cfg["accuracy"]["metrics_names"],
-        metric_wights=model_cfg["accuracy"]["metric_wights"],
-    )
+    loss = LossMetricTracker(model_cfg["loss1"])
+    acc = AccMetricTracker(model_cfg["acc"])
 
     # models
     model_cls = model_cfg["model"]
     if model_cfg["model_ck"]:
-        model, _, _, _ = model_cls.load_model(
-            device, model_cfg["model_ck"], model_cfg["model_cfg"]
-        )
+        model, _, _, _ = model_cls.load_model(device, model_cfg["model_ck"])
     else:
         model = model_cls(**model_cfg["model_cfg"]).to(device)
 
@@ -118,23 +98,24 @@ def sr_classifier_model(model_cfg: dict, device: torch.device):
         model_cfg (dict): _description_
     """
     # models
-    sr, _, _, sr_loss = sr_model(model_cfg["model"]["sr"], device)
-    classifier, _, _, classifier_loss = classifier_model(
+    sr, _, acc_sr, loss_sr = sr_model(model_cfg["model"]["sr"], device)
+    classifier, _, acc__classifier, loss_classifier = classifier_model(
         model_cfg["model"]["classifier"], device
     )
     model = model_cfg["model"]["combined"](sr, classifier).to(device)
 
     # loss
-    loss_func = LossFunctionSRTinyRadarNN(
-        loss_type_srcnn=sr_loss,
-        loss_type_classifier=classifier_loss,
-        wight_srcnn=model_cfg["loss"]["sr"]["wight"],
-        wight_classifier=model_cfg["loss"]["classifier"]["wight"],
+    loss_metric = LossMetricTrackerSrClassifier(
+        sr_tracker=loss_sr,
+        classifier_tracker=loss_classifier,
+        sr_weight=model_cfg["loss"]["sr"]["wight"],
+        classifier_weight=model_cfg["loss"]["classifier"]["wight"],
     )
-    loss_metric = LossMetricSRTinyRadarNN(metric_function=loss_func)
 
     # acc
-    acc_metric = AccuracyMetric(metric_function=acc_srcnn_tiny_radar)
+    acc_metric = AccMetricTrackerSrClassifier(
+        sr_acc=acc_sr, classifier_acc=acc__classifier
+    )
     # optimizer
     optimizer_class = model_cfg["optimizer"]["class"]
     optimizer_args = model_cfg["optimizer"]["args"]

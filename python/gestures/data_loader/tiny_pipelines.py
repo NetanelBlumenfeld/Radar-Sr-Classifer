@@ -18,28 +18,6 @@ def set_low_res(img: np.ndarray, down_sp_func, dims: tuple[int, int, int]) -> li
     return [dims[0], dims[1], dims[2], low_res.shape[1], low_res.shape[2]]
 
 
-# def sr_classifier_time_4090_pipeline(
-#     X: tuple[np.ndarray, np.ndarray], ds_func: Callable, norm_func: Callable
-# ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-#     """
-#     data: (N,5,2,32,492)
-#     """
-#     data, labels = X
-#     result_high_res = np.zeros(data.shape, dtype=np.complex64)
-#     low_res_dim = set_low_res(data[0, 0], ds_func, data.shape[:3])
-#     result_low_res = np.zeros(low_res_dim, dtype=np.complex64)
-#     for sample in range(data.shape[0]):
-#         for time_step in range(data.shape[1]):
-#             for sensor in range(data.shape[2]):
-#                 high_res = norm_func(data[sample, time_step, sensor])
-#                 result_high_res[sample, time_step, sensor] = high_res
-#                 result_low_res[sample, time_step, sensor] = ds_func(high_res)
-#     result_low_res = np.stack((result_low_res.real, result_low_res.imag), axis=3)
-#     result_high_res = np.stack((result_high_res.real, result_high_res.imag), axis=3)
-
-#     return result_low_res, result_high_res, labels
-
-
 def sr_classifier_time_4090_pipeline(
     X: tuple[np.ndarray, np.ndarray], ds_func: Callable, norm_func: Callable
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -47,12 +25,34 @@ def sr_classifier_time_4090_pipeline(
     data: (N,5,2,32,492)
     """
     data, labels = X
-    high_res_real = norm_func(data.real)
-    high_res_imag = norm_func(data.imag)
-    high_res = np.stack((high_res_real, high_res_imag), axis=3)
-    low_res = high_res[:, :, :, :, ::4, ::4]
+    result_high_res = np.zeros(data.shape, dtype=np.complex64)
+    low_res_dim = set_low_res(data[0, 0], ds_func, data.shape[:3])
+    result_low_res = np.zeros(low_res_dim, dtype=np.complex64)
+    for sample in range(data.shape[0]):
+        for time_step in range(data.shape[1]):
+            for sensor in range(data.shape[2]):
+                high_res = norm_func(data[sample, time_step, sensor])
+                result_high_res[sample, time_step, sensor] = high_res
+                result_low_res[sample, time_step, sensor] = ds_func(high_res)
+    result_low_res = np.stack((result_low_res.real, result_low_res.imag), axis=3)
+    result_high_res = np.stack((result_high_res.real, result_high_res.imag), axis=3)
 
-    return low_res, high_res, labels
+    return result_low_res, result_high_res, labels
+
+
+# def sr_classifier_time_4090_pipeline(
+#     X: tuple[np.ndarray, np.ndarray], ds_func: Callable, norm_func: Callable
+# ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+#     """
+#     data: (N,5,2,32,492)
+#     """
+#     data, labels = X
+#     high_res_real = norm_func(data.real)
+#     high_res_imag = norm_func(data.imag)
+#     high_res = np.stack((high_res_real, high_res_imag), axis=3)
+#     low_res = high_res[:, :, :, :, ::4, ::4]
+
+#     return low_res, high_res, labels
 
 
 def sr_classifier_4090_pipeline(
@@ -102,6 +102,6 @@ def classifier_pipeline(
 
                 if time_domain:
                     data = doppler_map(data, ax=0)
-                data = norm_func(data)
+                # data = norm_func(data)
                 res[i, j, k] = data
     return res, labels
