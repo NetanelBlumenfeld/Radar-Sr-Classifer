@@ -8,13 +8,13 @@ from gestures.network.models.sr_classifier.SRCnnTinyRadar import (
 from gestures.network.models.super_resolution.drln import Drln
 from gestures.network.models.super_resolution.safmn import SAFMN
 
-pc = "4090"
+pc = "3080"
 if pc == "4090":
     batch_size = 32
     people = 26
 elif pc == "mac":
-    people = 2
-    batch_size = 4
+    people = 10
+    batch_size = 8
 elif pc == "3080":
     people = 26
     batch_size = 32
@@ -60,30 +60,28 @@ data_preprocessing_cfg = {
 _classifier = {
     "model": TinyRadarNN,
     "model_cfg": {},
-    # "model_ck": "/home/netanel/code/outputs/classifier/TinyRadar_loss_TinyLoss_1/ds_1_original_dim_True_pix_norm_Normalization.Range_0_1_th_not_norm_doppler/2024-02-10_16:54:26/model/acc.pth",  # noqa
-    "model_ck": None,
+    "model_ck": "/home/netanel/code/outputs/classifier/TinyRadar_loss_TinyLoss_1/ds_1_original_dim_True_pix_norm_Normalization.Range_0_1_th_not_norm_doppler/2024-02-10_16:54:26/model/acc.pth",  # noqa
+    # "model_ck": None,
     "loss1": [{"metric": LossType.TinyLoss, "wight": 1}],
     "optimizer": {"class": torch.optim.Adam, "args": {"lr": lr}},
     "accuracy": [LossType.ClassifierAccuracy],
 }
 _sr = {
-    "model": Drln,
-    "model_cfg": {"num_drln_blocks": 2, "scale": _ds_scale_factor, "num_channels": 2},
-    # "model_ck": "/home/netanel/code/outputs/sr/Drln_2_loss_L1_1/ds_4_original_dim_False_pix_norm_Normalization.Range_0_1/2024-02-09_15:03:43/model/loss.pth",  # noqa
-    "model_ck": "/Users/netanelblumenfeld/Desktop/bgu/Msc/code/outputs/sr/Drln_2_loss_L1_1/ds_4_original_dim_False_pix_norm_Normalization.Range_0_1/2024-02-09_15:03:43/model/loss.pth",  # noqa
-    "loss": {
-        "metrics_names": [LossType.L1, LossType.MsssimLoss],
-        "metric_wights": [0.5, 0.5],
+    "model": SAFMN,
+    "model_cfg": {
+        "dim": 36,
+        "n_blocks": 8,
+        "ffn_scale": 2.0,
+        "upscaling_factor": 4,
+        "channels": 2,
     },
-    "loss1": [
+    "model_ck": None,  # noqa
+    # "model_ck": "/home/netanel/code/outputs/sr/Drln_2_loss_L1_0.5_MsssimLoss_0.5/ds_4_original_dim_False_pix_norm_Normalization.Range_0_1/2024-02-06_08:51:42/model/loss.pth",  # noqa
+    "loss": [
         {"metric": LossType.L1, "wight": 1},
     ],
-    "acc": [LossType.L1, LossType.MSE],
+    "acc": [LossType.PSNR, LossType.MSE, LossType.SSIM],
     "optimizer": {"class": torch.optim.Adam, "args": {"lr": lr}},
-    "accuracy": {
-        "metrics_names": [LossType.PSNR, LossType.SSIM],
-        "metric_wights": [1, 1],
-    },
 }
 _sr_classifier_models = {
     "model": {

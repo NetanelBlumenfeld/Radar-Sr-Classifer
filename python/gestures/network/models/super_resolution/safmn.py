@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from gestures.network.models.basic_model import BasicModel
 
 
 # Layer Norm
@@ -156,9 +157,11 @@ class AttBlock(nn.Module):
         return x
 
 
-class SAFMN(nn.Module):
-    def __init__(self, dim, n_blocks=8, ffn_scale=2.0, upscaling_factor=4, channels=2):
-        super().__init__()
+class SAFMN(BasicModel):
+    def __init__(
+        self, dim=36, n_blocks=8, ffn_scale=2.0, upscaling_factor=4, channels=2
+    ):
+        super(BasicModel).__init__()
         self.to_feat = nn.Conv2d(channels, dim, 3, 1, 1)
 
         self.feats = nn.Sequential(*[AttBlock(dim, ffn_scale) for _ in range(n_blocks)])

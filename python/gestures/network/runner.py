@@ -5,7 +5,10 @@ from typing import Any
 import torch
 import torch.optim.lr_scheduler as lr_scheduler
 from gestures.network.experiment_tracker import CallbackHandler
-from gestures.network.metric.metric_tracker import MetricTracker
+from gestures.network.metric.metric_tracker import (
+    AccMetricTrackerSrClassifier,
+    LossMetricTrackerSrClassifier,
+)
 from torch.utils.data.dataloader import DataLoader
 
 
@@ -36,8 +39,8 @@ class Runner:
         loader_test: DataLoader,
         device: torch.device,
         optimizer: torch.optim.Optimizer,
-        loss_metric: MetricTracker,
-        acc_metric: MetricTracker,
+        loss_metric: LossMetricTrackerSrClassifier,
+        acc_metric: AccMetricTrackerSrClassifier,
         callbacks: CallbackHandler,
         base_dir: str,
         task: str,

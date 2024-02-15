@@ -73,7 +73,7 @@ def sr_model(model_cfg: dict, device: torch.device):
     Args:
         model_cfg (dict): _description_
     """
-    loss = LossMetricTracker(model_cfg["loss1"])
+    loss = LossMetricTracker(model_cfg["loss"])
     acc = AccMetricTracker(model_cfg["acc"])
 
     # models
@@ -125,7 +125,7 @@ def sr_classifier_model(model_cfg: dict, device: torch.device):
 
 def setup_model(
     task: str, model_cfg: dict, device: torch.device
-) -> tuple[BasicModel, torch.optim.Optimizer, Any, LossMetricSRTinyRadarNN]:
+) -> tuple[BasicModel, torch.optim.Optimizer, Any, LossMetricTrackerSrClassifier]:
     if task == "sr_classifier":
         model, optimizer, acc, loss_metric = sr_classifier_model(
             model_cfg[task], device
@@ -143,7 +143,7 @@ def setup_model(
 
 def setup_train_name(
     data_preprocessing_cfg: dict,
-    loss: LossMetricSRTinyRadarNN,
+    loss: LossMetricTrackerSrClassifier,
     w_c: float,
     w_sr: float,
     train_cfg: dict,
