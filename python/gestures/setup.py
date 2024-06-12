@@ -1,4 +1,5 @@
 import os
+import platform
 from typing import Any
 
 import torch as torch
@@ -19,24 +20,23 @@ from gestures.network.metric.metric_tracker import (
 from gestures.network.models.basic_model import BasicModel
 
 
-def get_pc_cgf(pc: str) -> tuple[str, str, torch.device]:
-    if pc == "4090":
+def get_pc_cgf() -> tuple[str, str, str, torch.device]:
+    # TODO: add option for 3080 and 4090
+    os_info = platform.system()
+    if os_info == "Linux":
         data_dir = "/mnt/netanelnew/tinyradar/"
         output_dir = "/home/netanel/code/outputs1/"
-        use_cuda = torch.cuda.is_available()
-        device = torch.device("cuda:0" if use_cuda else "cpu")
-    elif pc == "mac":
+        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        pc = "4090"
+    elif os_info == "Darwin":
         data_dir = "/Users/netanelblumenfeld/Desktop/data/data_feat"
         output_dir = "/Users/netanelblumenfeld/Desktop/bgu/Msc/code/outputs/"
         device = torch.device("cpu")
-    elif pc == "3080":
-        data_dir = "/mnt/data/Netanel/111G/11G/"
-        output_dir = "/home/aviran/netanel/project/Radar/outputs/"
-        use_cuda = torch.cuda.is_available()
-        device = torch.device("cuda:0" if use_cuda else "cpu")
+        pc = "mac"
     else:
-        raise ValueError("pc must be 4090, mac or 3080")
-    return data_dir, output_dir, device
+        raise ValueError("OS must be Linux or Darwin")
+
+    return pc, data_dir, output_dir, device
 
 
 def classifier_model(model_cfg: dict, device: torch.device):

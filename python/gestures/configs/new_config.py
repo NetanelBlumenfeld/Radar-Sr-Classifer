@@ -27,11 +27,11 @@ gestures = [
     "PalmHold",
     "NoHand",
 ]
+
+pc, data_dir, output_dir, device = get_pc_cgf()
+task = "sr_classifier"  # task = ["sr", "classifier", "sr_classifier"]
 epochs = 200
 lr = 0.0015
-pc = "mac"  # pc = ["mac","3080", "4090"]
-data_dir, output_dir, device = get_pc_cgf(pc)
-task = "sr_classifier"  # task = ["sr", "classifier", "sr_classifier"]
 
 
 main_config = {
