@@ -161,3 +161,56 @@ def get_tiny_data_loader(
     valloader = DataLoader(val_data_set, batch_size=batch_size, shuffle=False)
     testloader = DataLoader(test_data_set, batch_size=batch_size, shuffle=False)
     return trainloader, valloader, testloader
+
+
+def get_tiny_data_loader1(
+    data_dir: str,
+    data_scg: dict,
+    data_preprocessing_cfg: dict,
+    use_pool: bool = True,
+    batch_size: int = 32,
+    # threshold: float = 0.0,
+) -> tuple[DataLoader, DataLoader, DataLoader]:
+    """
+    Returns a data loader for the tiny dataset.
+
+    Params:
+    * data_dir: path to the data directory
+    * processed_data: whether the data should be processed before setting the data loader
+    * use_pool: whether to use multiprocessing pool to load the data
+    :return: a tuple of train and test data loaders
+    """
+    dataset_loader_dict = {
+        "sr": sr_loader,
+        "classifier": classifier_loader,
+        "sr_classifier": sr_classifier_loader,
+    }
+    task = data_preprocessing_cfg["task"]
+    if task not in dataset_loader_dict:
+        raise ValueError(f"Unknown task: {task}")
+    dataset_func = dataset_loader_dict[task]
+    dataset_func_partial = partial(dataset_func, use_pool=use_pool)
+    data_path = data_dir + "/test/X.npy"
+    X = np.load(data_path)
+    data_path = data_dir + "/test/y.npy"
+    y = np.load(data_path)
+    # X[X < threshold] = 0
+
+    norm_func, ds_func = get_pipeline_function(
+        task,
+        data_preprocessing_cfg["pix_norm"],
+        data_preprocessing_cfg["ds_factor"],
+        data_preprocessing_cfg["original_dims"],
+    )
+    train_data_set, val_data_set, test_data_set = dataset_func_partial(
+        X=X,
+        labels=y,
+        norm_func=norm_func,
+        ds_func=ds_func,
+        processed_data=data_preprocessing_cfg["processed_data"],
+        time_domain=data_preprocessing_cfg["time_domain"],
+    )
+    trainloader = DataLoader(train_data_set, batch_size=batch_size, shuffle=False)
+    valloader = DataLoader(val_data_set, batch_size=batch_size, shuffle=False)
+    testloader = DataLoader(test_data_set, batch_size=batch_size, shuffle=False)
+    return trainloader, valloader, testloader

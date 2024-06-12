@@ -21,12 +21,12 @@ from gestures.network.models.basic_model import BasicModel
 
 def get_pc_cgf(pc: str) -> tuple[str, str, torch.device]:
     if pc == "4090":
-        data_dir = "/mnt/netaneldata/11G/"
-        output_dir = "/home/netanel/code/outputs/"
+        data_dir = "/mnt/netanelnew/tinyradar/"
+        output_dir = "/home/netanel/code/outputs1/"
         use_cuda = torch.cuda.is_available()
         device = torch.device("cuda:0" if use_cuda else "cpu")
     elif pc == "mac":
-        data_dir = "/Users/netanelblumenfeld/Desktop/data/11G/"
+        data_dir = "/Users/netanelblumenfeld/Desktop/data/data_feat"
         output_dir = "/Users/netanelblumenfeld/Desktop/bgu/Msc/code/outputs/"
         device = torch.device("cpu")
     elif pc == "3080":
@@ -50,7 +50,7 @@ def classifier_model(model_cfg: dict, device: torch.device):
     loss = LossMetricTracker(model_cfg["loss1"])
 
     # acc
-    acc = AccMetricTracker(model_cfg["accuracy"])
+    acc = AccMetricTracker(model_cfg["accuracy_metric"])
 
     # models
     model_cls = model_cfg["model"]
@@ -74,7 +74,7 @@ def sr_model(model_cfg: dict, device: torch.device):
         model_cfg (dict): _description_
     """
     loss = LossMetricTracker(model_cfg["loss"])
-    acc = AccMetricTracker(model_cfg["acc"])
+    acc = AccMetricTracker(model_cfg["accuracy_metric"])
 
     # models
     model_cls = model_cfg["model"]

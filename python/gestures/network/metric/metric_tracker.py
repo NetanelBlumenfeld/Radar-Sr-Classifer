@@ -49,6 +49,7 @@ class LossMetricTracker:
             self.name += "_" + m.name
 
     def reset(self):
+        self.running_total = 0
         self.total_loss = []
         for metric in self.metrics:
             metric.reset()

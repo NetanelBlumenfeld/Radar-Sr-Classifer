@@ -126,7 +126,7 @@ class SAFM(nn.Module):
         out = []
         for i in range(self.n_levels):
             if i > 0:
-                p_size = (h // 2**i, w // 2**i)
+                p_size = (max(3, h // 2**i), max(3, w // 2**i))
                 s = F.adaptive_max_pool2d(xc[i], p_size)
                 s = self.mfr[i](s)
                 s = F.interpolate(s, size=(h, w), mode="nearest")
@@ -161,7 +161,8 @@ class SAFMN(BasicModel):
     def __init__(
         self, dim=36, n_blocks=8, ffn_scale=2.0, upscaling_factor=4, channels=2
     ):
-        super(BasicModel).__init__()
+        self.model_name = "SAFMN"
+        super(SAFMN, self).__init__(self.model_name)
         self.to_feat = nn.Conv2d(channels, dim, 3, 1, 1)
 
         self.feats = nn.Sequential(*[AttBlock(dim, ffn_scale) for _ in range(n_blocks)])
@@ -170,10 +171,13 @@ class SAFMN(BasicModel):
             nn.Conv2d(dim, channels * upscaling_factor**2, 3, 1, 1),
             nn.PixelShuffle(upscaling_factor),
         )
-        self.model_name = "SAFMN"
 
     @staticmethod
     def reshape_to_model_output(low_res, high_res, device):
+        d0, d1, d2, d3, d4 = low_res.shape
+        low_res = low_res.reshape(d0 * d1, d2, d3, d4)
+        d0, d1, d2, d3, d4 = high_res.shape
+        high_res = high_res.reshape(d0 * d1, d2, d3, d4)
         return low_res.to(device), high_res.to(device)
 
     def forward(self, x):
@@ -189,7 +193,7 @@ if __name__ == "__main__":
 
     # x = torch.randn(1, 3, 640, 360)
     # x = torch.randn(1, 3, 427, 240)
-    x = torch.randn(1, 3, 320, 180)
+    x = torch.randn(1, 2, 320, 180)
     # x = torch.randn(1, 3, 256, 256)
 
     model = SAFMN(dim=36, n_blocks=8, ffn_scale=2.0, upscaling_factor=4)

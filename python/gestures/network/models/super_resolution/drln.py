@@ -97,6 +97,10 @@ class Drln(BasicModel):
 
     @staticmethod
     def reshape_to_model_output(low_res, high_res, device):
+        d0, d1, d2, d3, d4 = low_res.shape
+        low_res = low_res.reshape(d0 * d1, d2, d3, d4)
+        d0, d1, d2, d3, d4 = high_res.shape
+        high_res = high_res.reshape(d0 * d1, d2, d3, d4)
         return low_res.to(device), high_res.to(device)
 
     def forward(self, x):

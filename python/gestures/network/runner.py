@@ -90,6 +90,8 @@ class Runner:
             self.reset()
             self.logs["metrics"]["val"] = self.validate("val", self.loader_validation)
             self.reset()
+            print(self.logs["metrics"]["train"])
+            print(self.logs["metrics"]["val"])
             self.callbacks.on_epoch_end(i, self.logs)
             self.lr_s.step()
             self.logs["train_info"]["lr"] = self.optimizer.param_groups[0]["lr"]

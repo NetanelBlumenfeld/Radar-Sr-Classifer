@@ -58,7 +58,7 @@ class CombinedSRDrlnClassifier(BasicModel):
         self,
         sr: BasicModel,
         classifier: BasicModel,
-        scale_factor: int = 4,
+        scale_factor: int = 2,
     ):
         model_name = f"sr_{sr.model_name}_classifier_{classifier.model_name}"
         super(CombinedSRDrlnClassifier, self).__init__(model_name)
