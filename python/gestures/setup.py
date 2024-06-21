@@ -3,14 +3,10 @@ import platform
 from typing import Any
 
 import torch as torch
-from gestures.network.experiment_tracker import (
-    BaseTensorBoardTracker,
-    CallbackHandler,
-    Logger,
-    ProgressBar,
-    SaveModel,
-    get_time_in_string,
-)
+from gestures.network.callbacks.callback_handler import CallbackHandler
+from gestures.network.callbacks.callback_logger import Logger, get_time_in_string
+from gestures.network.callbacks.callback_save_model import SaveModel
+from gestures.network.callbacks.callback_tensotboard import BaseTensorBoardTracker
 from gestures.network.metric.metric_tracker import (
     AccMetricTracker,
     AccMetricTrackerSrClassifier,
@@ -160,7 +156,7 @@ def setup_train_name(
 def setup_callbacks(callbacks_cfg: dict, base_dir: str) -> CallbackHandler:
     callbacks_dict = {
         "tensor_board": BaseTensorBoardTracker,
-        "progress": ProgressBar,
+        # "progress": ProgressBar,
         "save_model": SaveModel,
         "lr_scheduler": torch.optim.lr_scheduler.ExponentialLR,
         "logger": Logger,

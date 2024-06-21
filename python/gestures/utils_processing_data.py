@@ -137,16 +137,3 @@ class DownSampleBatch(torch.nn.Module):
         if self.D == 1:
             return x
         return x[:, :, :, :: self.D, :: self.D]
-
-
-class SrMultiScaleProcessor(torch.nn.Module):
-    def __init__(self, D: int):
-        super(SrMultiScaleProcessor, self).__init__()
-
-    def forward(self, high_res: torch.Tensor, d: int) -> list[torch.Tensor]:
-        low_res = DownSampleBatch(D=d)(high_res)
-        low_res = NormalizeBatch()(low_res)
-        low_res = ComplexToRealBatch()(low_res)
-        high_res = NormalizeBatch()(high_res)
-        high_res = ComplexToRealBatch()(high_res)
-        return [low_res, high_res]

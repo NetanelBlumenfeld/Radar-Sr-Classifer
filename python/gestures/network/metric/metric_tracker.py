@@ -1,13 +1,13 @@
 import torch
-from gestures.network.metric.metric_factory import LossFactory, LossType
-from gestures.network.metric.metrics import AccuracyMetric
+from gestures.network.metric.criterion_factory import CriterionFactory, MetricCriterion
+from gestures.network.metric.custom_criterion import AccuracyMetric
 
 EPSILON = 1e-6
 
 
 class BasicMetricTracker:
-    def __init__(self, metric: LossType, wight: float = 1.0):
-        self.metric_func = LossFactory.get_loss_function(metric.name)
+    def __init__(self, metric: MetricCriterion, wight: float = 1.0):
+        self.metric_func = CriterionFactory.get_loss_function(metric.name)
         self.wight = wight
         self.name = metric.name
         self.running_total = 0
@@ -65,8 +65,7 @@ class LossMetricTracker:
 
 
 class AccMetricTracker:
-    def __init__(self, acc_metrics: list[LossType]):
-        self.metrics = [BasicMetricTracker(metric) for metric in acc_metrics]
+    def __init__(self, acc_metrics: list[MetricCriterion]):
         self.metrics = []
         for metric in acc_metrics:
             if metric.name == "ClassifierAccuracy":

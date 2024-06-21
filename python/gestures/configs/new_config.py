@@ -1,6 +1,6 @@
 import gestures.configs.new_config_models as model_cfg
 import torch
-from gestures.network.metric.metric_factory import LossType
+from gestures.network.metric.criterion_factory import MetricCriterion
 from gestures.network.models.sr_classifier.SRCnnTinyRadar import (
     CombinedSRDrlnClassifier,
 )
@@ -29,7 +29,7 @@ gestures = [
 ]
 
 pc, data_dir, output_dir, device = get_pc_cgf()
-task = "sr_classifier"  # task = ["sr", "classifier", "sr_classifier"]
+task = "classifier"  # task = ["sr", "classifier", "sr_classifier"]
 epochs = 200
 lr = 0.0015
 
@@ -76,19 +76,23 @@ _classifier = {
     "model": model_cfg.tiny["model_cls"],
     "model_cfg": model_cfg.tiny["model_cfg"],
     "model_ck": model_cfg.tiny["model_ck"],
-    "loss1": [{"metric": LossType.TinyLoss, "wight": 1}],
+    "loss1": [{"metric": MetricCriterion.TinyLoss, "wight": 1}],
     "optimizer": {"class": torch.optim.Adam, "args": {"lr": lr}},
-    "accuracy_metric": [LossType.ClassifierAccuracy],
+    "accuracy_metric": [MetricCriterion.ClassifierAccuracy],
 }
 _sr = {
     "model": model_cfg.safmn["model_cls"],
     "model_cfg": model_cfg.safmn["model_cfg"],
     "model_ck": model_cfg.safmn["model_ck"],
     "loss": [
-        {"metric": LossType.L1, "wight": 0.5},
-        {"metric": LossType.MSSSIM, "wight": 0.5},
+        {"metric": MetricCriterion.L1, "wight": 0.5},
+        {"metric": MetricCriterion.MSSSIM, "wight": 0.5},
     ],
-    "accuracy_metric": [LossType.PSNR, LossType.MSE, LossType.MSSSIM],
+    "accuracy_metric": [
+        MetricCriterion.PSNR,
+        MetricCriterion.MSE,
+        MetricCriterion.MSSSIM,
+    ],
     "optimizer": {"class": torch.optim.Adam, "args": {"lr": lr}},
 }
 _sr_classifier_models = {
@@ -98,8 +102,8 @@ _sr_classifier_models = {
         "combined": CombinedSRDrlnClassifier,
     },
     "loss": {
-        "sr": {"wight": 0.5, "loss_type": LossType.L1},
-        "classifier": {"wight": 1, "loss_type": LossType.TinyLoss},
+        "sr": {"wight": 0.5, "loss_type": MetricCriterion.L1},
+        "classifier": {"wight": 1, "loss_type": MetricCriterion.TinyLoss},
     },
     "optimizer": {"class": torch.optim.Adam, "args": {"lr": lr}},
 }
