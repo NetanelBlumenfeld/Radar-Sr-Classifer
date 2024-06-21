@@ -7,7 +7,6 @@ from gestures.utils_processing_data import (
     DopplerMapOneSample,
     DownSampleOneSample,
     NormalizeOneSample,
-    SrMultiScaleProcessor,
     ToTensor,
 )
 from torch.utils.data import DataLoader, Dataset
@@ -21,6 +20,21 @@ def construct_label(
     label = gestures.index(label)
     label = torch.tensor([label] * duplication_number).flatten()
     return label
+
+
+class BasicDataset(Dataset):
+    def __init__(self, files: list[str], base_dir: str):
+        self.files = files
+        self.base_dir = base_dir
+
+    def __len__(self):
+        return len(self.files)
+
+    def __getitem__(self, idx):
+        file = self.files[idx]
+        data = np.load(os.path.join(self.base_dir, file))
+        data = ToTensor()(data)
+        return data
 
 
 class ClassifierDataset(Dataset):
@@ -59,7 +73,7 @@ class SrClassifierDataset(Dataset):
         data = np.load(os.path.join(self.base_dir, file))
         low_res_data, high_res_data = self.process_data(data)
         label = construct_label(file, self.gestures, data[0].shape[0])
-        return low_res_data, [high_res_data, label]
+        return (low_res_data, high_res_data, label)
 
     def process_data(self, high_res_data: np.ndarray) -> tuple[torch.Tensor]:
         low_res_data = ToTensor()(high_res_data)
@@ -73,23 +87,15 @@ class SrClassifierDataset(Dataset):
         return low_res_data, high_res_data
 
 
-class BasicDataset(Dataset):
-    def __init__(self, files: list[str], base_dir: str):
-        self.files = files
-        self.base_dir = base_dir
-
-    def __len__(self):
-        return len(self.files)
-
-    def __getitem__(self, idx):
-        file = self.files[idx]
-        data = np.load(os.path.join(self.base_dir, file))
-        data = ToTensor()(data)
-        return data
-
-
-def get_data_loader(files, batch_size, gestures, base_dir):
-    data_set = SrClassifierDataset(files, gestures, base_dir)
+def get_data_loader(
+    task: str, files: list[str], batch_size: int, gestures: list[str], base_dir: str
+) -> DataLoader:
+    if task == "classifier":
+        data_set = ClassifierDataset(files, gestures, base_dir)
+    elif task == "sr_classifier":
+        data_set = SrClassifierDataset(files, gestures, base_dir)
+    else:
+        raise ValueError("Unknown task: " + task)
     return DataLoader(data_set, batch_size=batch_size, shuffle=True)
 
 
@@ -111,9 +117,5 @@ if __name__ == "__main__":
         "RandomGesture",
     ]
     k = 1
-    processor = SrMultiScaleProcessor(D=k)
     base_dir = "/Users/netanelblumenfeld/Downloads/11G/test"
-    data_loader = get_data_loader(files, 5, gestures, base_dir)
-    for i, (data, label) in enumerate(data_loader):
-        process_data = processor(data, d=k)
-        k *= 2
+    data_loader = get_data_loader("classification", files, 5, gestures, base_dir)
