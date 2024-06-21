@@ -171,7 +171,6 @@ class BaseTensorBoardTracker(CallbackProtocol):
     def on_train_end(self, logs: Optional[dict] = None) -> None:
         """loading the best model and calculate the confusion matrix"""
 
-        # TODO - move to another place
         def _get_preds_for_best_models(model, loader: DataLoader, task: str):
             preds_list, trues_list = [], []
             for batch, labels in loader:
@@ -226,7 +225,6 @@ class BaseTensorBoardTracker(CallbackProtocol):
 
 
 class SaveModel(CallbackProtocol):
-    # TODO - save my metric name and operation
     def __init__(
         self,
         base_dir: str,
