@@ -19,6 +19,8 @@ if __name__ == "__main__":
         main_config["device"],
     )
     files = os.listdir("/Users/netanelblumenfeld/Downloads/11G/test")
+    files = [file for file in files if file.endswith(".npy")]
+
     gestures = [
         "PinchIndex",
         "PinchPinky",
@@ -32,7 +34,6 @@ if __name__ == "__main__":
         "Circle",
         "PalmHold",
         "NoHand",
-        "RandomGesture",
     ]
     base_dir = "/Users/netanelblumenfeld/Downloads/11G/test"
 

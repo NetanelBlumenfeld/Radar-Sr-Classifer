@@ -63,7 +63,7 @@ class ClassificationAccuracy(nn.Module):
         squashed_labels = labels.reshape(-1)
         total = squashed_labels.shape[0]
         correct = pred[1].eq(squashed_labels).sum().item()
-        return correct, total, pred
+        return correct, total
 
 
 class AccuracyMetric:
@@ -73,23 +73,28 @@ class AccuracyMetric:
         self.name = "classification"
         self.true_labels = []
         self.pred_labels = []
+        self.values = []
         self.running_total = 0
 
     @property
     def value(self):
         # return {"acc": 100 * (sum(self.values) / self.running_total)}
-        return sum(self.true_labels) / (self.running_total)
+        return sum(self.values) / (self.running_total)
 
     def update(self, outputs: torch.Tensor, labels: torch.Tensor):
-        correct, total, pred_labels = self.metric_function(outputs, labels)
+        correct, total = self.metric_function(outputs, labels)
+        preds = outputs.cpu().detach().numpy().reshape(-1, 12)
 
-        self.true_labels.append(correct)
-        self.pred_labels.append(pred_labels)
+        self.values.append(correct)
+        self.true_labels.append(labels)
+        self.pred_labels.append(preds)
         self.running_total += total
 
     def reset(self):
         self.true_labels = []
         self.pred_labels = []
+        self.values = []
+
         self.running_total = 0.0
 
 

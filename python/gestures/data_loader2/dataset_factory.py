@@ -101,6 +101,7 @@ def get_data_loader(
 
 if __name__ == "__main__":
     files = os.listdir("/Users/netanelblumenfeld/Downloads/11G/test")
+    files = [file for file in files if file.endswith(".npy")]
     gestures = [
         "PinchIndex",
         "PinchPinky",
@@ -114,7 +115,6 @@ if __name__ == "__main__":
         "Circle",
         "PalmHold",
         "NoHand",
-        "RandomGesture",
     ]
     k = 1
     base_dir = "/Users/netanelblumenfeld/Downloads/11G/test"
