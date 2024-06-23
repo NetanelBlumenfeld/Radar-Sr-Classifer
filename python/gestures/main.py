@@ -19,10 +19,22 @@ if __name__ == "__main__":
     pc, data_dir, output_dir, device = get_pc_cgf()
     task = "classifier"  # task = ["sr", "classifier", "sr_classifier"]
     original_dims = True if task == "classifier" else False
-    for x, y in [(1, 1), (1, 2), (2, 1)]:
-        batch_size = 50
+    for x, y in [
+        (1, 1),
+        (1, 2),
+        (2, 1),
+        (2, 2),
+        (4, 4),
+        (4, 8),
+        (8, 4),
+        (2, 4),
+        (4, 2),
+        (8, 2),
+        (2, 8),
+    ]:
+        batch_size = 100
         dx, dy = x, y
-        epochs = 5
+        epochs = 100
 
         gestures = [
             "PinchIndex",
@@ -86,9 +98,9 @@ if __name__ == "__main__":
         # #training
         runner = Runner(
             model=model,
-            loader_train=data_loader["tt"],
-            loader_validation=data_loader["tt"],
-            loader_test=data_loader["tt"],
+            loader_train=data_loader["train"],
+            loader_validation=data_loader["val"],
+            loader_test=data_loader["test"],
             device=device,
             optimizer=optimizer,
             loss_metric=loss_metric,
