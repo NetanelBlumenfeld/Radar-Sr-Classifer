@@ -1,6 +1,5 @@
 import gc
 import os
-from typing import Any
 
 import torch
 import torch.optim.lr_scheduler as lr_scheduler
@@ -9,25 +8,35 @@ from gestures.network.metric.metric_tracker import (
     AccMetricTrackerSrClassifier,
     LossMetricTrackerSrClassifier,
 )
+from gestures.network.models.basic_model import BasicModel
 from torch.utils.data.dataloader import DataLoader
 
 
-def get_best_model_paths(base_dir):
-    best_model_dir = os.path.join(base_dir, "model")
-    res = []
-    for file_name in os.listdir(best_model_dir):
-        if file_name.endswith("pth"):
-            res.append(best_model_dir + "/" + file_name)
-    return res
+def train(model, loader_train, device, optimizer, loss_metric, acc_metric):
+    model.train()
+    for batch, labels in loader_train:
+        batch, labels = model.reshape_to_model_output(batch, labels, device)
+        optimizer.zero_grad()
+        outputs = model(batch)
+        loss = loss_metric.update(outputs, labels)
+        if torch.isnan(loss).any():
+            raise ValueError("Loss is None")
+        loss.backward()  # type: ignore
+        optimizer.step()
+        acc_metric.update(outputs, labels)
 
 
-def get_models(base_dir, device, model_cls):
-    models = []
-    models_path = get_best_model_paths(base_dir)
-    for p in models_path:
-        model, _, _, _ = model_cls.load_model(device, p)
-        models.append(model)
-    return models
+def validate(model, dataset: DataLoader, device, loss_metric, acc_metric):
+    model.eval()
+    with torch.no_grad():
+        for batch, labels in dataset:
+            batch, labels = model.reshape_to_model_output(batch, labels, device)
+            outputs = model(batch)
+            _ = loss_metric.update(outputs, labels)
+            acc_metric.update(outputs, labels)
+            del outputs, batch, labels
+            gc.collect()
+            torch.cuda.empty_cache()
 
 
 class Runner:
@@ -38,7 +47,7 @@ class Runner:
         loader_validation: DataLoader,
         loader_test: DataLoader,
         device: torch.device,
-        optimizer: torch.optim.Optimizer,
+        optimizer: torch.optim.Optimizer,  # type: ignore
         loss_metric: LossMetricTrackerSrClassifier,
         acc_metric: AccMetricTrackerSrClassifier,
         callbacks: CallbackHandler,
@@ -71,6 +80,9 @@ class Runner:
                 "lr": self.optimizer.param_groups[0]["lr"],
             },
             "task": self.task,
+            "true_labels": None,
+            "pred_labels": None,
+            "model_name": None,
         }
 
         self.lr_s = lr_scheduler.ExponentialLR(optimizer, gamma=0.9995)
@@ -86,71 +98,66 @@ class Runner:
         for i in range(epochs):
             print(i)
             self.callbacks.on_epoch_begin(i)
-            self.logs["metrics"]["train"] = self.train()
+            print(self.acc_metric.value)
+            train(
+                self.model,
+                self.loader_train,
+                self.device,
+                self.optimizer,
+                self.loss_metric,
+                self.acc_metric,
+            )
+            self.logs["metrics"]["train"] = (
+                self.acc_metric.value | self.loss_metric.value
+            )
+            print(self.acc_metric.value)
+
             self.reset()
-            self.logs["metrics"]["val"] = self.validate("val", self.loader_validation)
+            print(self.acc_metric.value)
+            validate(
+                self.model,
+                self.loader_validation,
+                self.device,
+                self.loss_metric,
+                self.acc_metric,
+            )
+            self.logs["metrics"]["val"] = self.acc_metric.value | self.loss_metric.value
+
+            print(self.acc_metric.value)
             self.reset()
-            print(self.logs["metrics"]["train"])
-            print(self.logs["metrics"]["val"])
+            print(self.acc_metric.value)
             self.callbacks.on_epoch_end(i, self.logs)
             self.lr_s.step()
             self.logs["train_info"]["lr"] = self.optimizer.param_groups[0]["lr"]
 
-        self.reset()
-        self.logs["metrics"]["test"] = self.test_evaluation()
+            self.test_evaluation()
         self.callbacks.on_train_end(self.logs)
 
-    def train(self) -> dict[str, Any]:
-        self.model.train()
-        for batch, labels in self.loader_train:
-            batch, labels = self.model.reshape_to_model_output(
-                batch, labels, self.device
-            )
-            self.callbacks.on_batch_begin(logs=self.logs)
-            self.logs["metrics"]["train"] = self.train_batch(batch, labels)
-            del batch, labels
-            self.callbacks.on_batch_end(logs=self.logs)
-        return self.logs["metrics"]["train"]
-
-    def train_batch(self, batch: torch.Tensor, labels: torch.Tensor) -> dict[str, Any]:
-        self.optimizer.zero_grad()
-        outputs = self.model(batch)
-        loss = self.loss_metric.update(outputs, labels)
-        if torch.isnan(loss).any():
-            raise ValueError("Loss is None")
-        loss.backward()  # type: ignore
-        self.optimizer.step()
-        self.acc_metric.update(outputs, labels)
-        return self.loss_metric.value | self.acc_metric.value
-
-    def validate(self, kind: str, dataset: DataLoader, model=None):
-        if model is not None:
-            self.model = model
-        self.model.eval()
-        with torch.no_grad():
-            for batch, labels in dataset:
-                batch, labels = self.model.reshape_to_model_output(
-                    batch, labels, self.device
-                )
-                self.callbacks.on_eval_begin()
-                self.logs["metrics"][kind] = self.validate_batch(batch, labels)
-                del batch, labels
-                self.callbacks.on_eval_end(logs=self.logs)
-        return self.logs["metrics"][kind]
-
-    def validate_batch(self, batch, labels) -> dict[str, Any]:
-        outputs = self.model(batch)
-        _ = self.loss_metric.update(outputs, labels)
-        self.acc_metric.update(outputs, labels)
-        del outputs, batch, labels
-        gc.collect()
-        torch.cuda.empty_cache()
-
-        return self.loss_metric.value | self.acc_metric.value
-
     def test_evaluation(self):
-        models = get_models(self.base_dir, self.device, self.model)
-        res = []
-        for m in models:
-            res.append(self.validate("test", self.loader_test, m))
-        return res
+        best_models_dir = os.path.join(self.base_dir, "model")
+        for file_name in os.listdir(best_models_dir):
+            if file_name.endswith(".pth"):
+                self.reset()
+                model_path = os.path.join(best_models_dir, file_name)
+                model, _, _, _ = BasicModel.load_pre_train_model(
+                    self.device, model_path
+                )
+                model_name = f'{file_name.split(".")[0]}_{model.model_name}'
+                validate(
+                    model,
+                    self.loader_test,
+                    self.device,
+                    self.loss_metric,
+                    self.acc_metric,
+                )
+                self.logs["metrics"]["test"] = (
+                    self.acc_metric.value | self.loss_metric.value
+                )
+                self.logs["true_labels"] = self.acc_metric.metrics[
+                    "ClassifierAccuracy"
+                ].true_labels
+                self.logs["pred_labels"] = self.acc_metric.metrics[
+                    "ClassifierAccuracy"
+                ].pred_labels
+                self.logs["model_name"] = model_name
+                self.callbacks.on_eval_end(self.logs)

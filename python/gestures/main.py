@@ -18,7 +18,7 @@ if __name__ == "__main__":
         main_config["output_dir"],
         main_config["device"],
     )
-    files = os.listdir("/Users/netanelblumenfeld/Downloads/11G/test")
+    files = os.listdir("/Users/netanelblumenfeld/Downloads/11G/tt")
     files = [file for file in files if file.endswith(".npy")]
 
     gestures = [
@@ -35,7 +35,7 @@ if __name__ == "__main__":
         "PalmHold",
         "NoHand",
     ]
-    base_dir = "/Users/netanelblumenfeld/Downloads/11G/test"
+    base_dir = "/Users/netanelblumenfeld/Downloads/11G/tt"
 
     data_loader = get_data_loader(main_config["task"], files, 6, gestures, base_dir)
     dummy_tensor = torch.randn(10, 10, device=device)

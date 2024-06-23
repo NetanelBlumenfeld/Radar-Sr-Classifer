@@ -65,7 +65,7 @@ class CallbackHandler(CallbackProtocol):
             if hasattr(callback, "on_eval_begin"):
                 callback.on_eval_begin(**kwargs)
 
-    def on_eval_end(self, **kwargs):
+    def on_eval_end(self, logs: dict | None = None):
         for callback in self.callbacks:
             if hasattr(callback, "on_eval_end"):
-                callback.on_eval_end(**kwargs)
+                callback.on_eval_end(logs)

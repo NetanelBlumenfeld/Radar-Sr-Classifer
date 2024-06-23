@@ -52,15 +52,15 @@ class Logger(CallbackProtocol):
             txt = txt1 + txt2 + txt3
             self.logger.info(txt)
 
-    def on_train_end(self, logs: Optional[dict] = None) -> None:
-        "log the best model path"
-        if logs:
-            txt1 = "\nTest result"
-            txt2 = (
-                f"\n Test - {[self._print_metrics(f) for f in logs['metrics']['test']]}"
-            )
-            txt = txt1 + txt2
-            self.logger.info(txt)
+    # def on_train_end(self, logs: Optional[dict] = None) -> None:
+    #     "log the best model path"
+    #     if logs:
+    #         txt1 = "\nTest result"
+    #         txt2 = (
+    #             f"\n Test - {[self._print_metrics(f) for f in logs['metrics']['test']]}"
+    #         )
+    #         txt = txt1 + txt2
+    #         self.logger.info(txt)
 
     def on_epoch_end(self, epoch: int, logs: Optional[dict] = None) -> None:
         "log Epoch number, train and val metrics"

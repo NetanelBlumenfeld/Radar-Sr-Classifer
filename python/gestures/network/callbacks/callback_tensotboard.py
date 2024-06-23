@@ -1,5 +1,4 @@
 import os
-from typing import Optional
 
 import numpy as np
 import torch
@@ -7,7 +6,6 @@ from gestures.network.callbacks.callback_handler import CallbackProtocol
 from gestures.utils_os import ensure_path_exists
 from matplotlib import pyplot as plt
 from sklearn.metrics import ConfusionMatrixDisplay, confusion_matrix
-from torch.utils.data.dataloader import DataLoader
 from torch.utils.tensorboard.writer import SummaryWriter
 
 
@@ -16,7 +14,6 @@ class BaseTensorBoardTracker(CallbackProtocol):
         self,
         base_dir: str,
         classes_name: list[str],
-        # best_model_path: str,
         with_cm: bool = True,
     ):
         board_dir = os.path.join(base_dir, "tensorboard")
@@ -48,57 +45,31 @@ class BaseTensorBoardTracker(CallbackProtocol):
         cm_display.plot(cmap="Blues", values_format=".2%", ax=ax)
         self.writer.add_figure(f"confusion_matrix/{title}", cm_display.figure_, 0)
 
-    def on_train_end(self, logs: Optional[dict] = None) -> None:
-        """loading the best model and calculate the confusion matrix"""
+    def on_epoch_end(self, epoch: int, logs: dict | None = None) -> None:
+        if logs is None:
+            return
+        self._add_metrics_scalars(logs["metrics"], ["train", "val"], epoch)
 
-        def _get_preds_for_best_models(model, loader: DataLoader, task: str):
-            preds_list, trues_list = [], []
-            for batch, labels in loader:
-                batch, labels = model.reshape_to_model_output(
-                    batch, labels, self.device
+    def on_eval_end(self, logs: dict | None = None) -> None:
+        if logs is None:
+            return
+        self._add_metrics_scalars(logs["metrics"], ["test"], 0)
+        preds_labels = logs["pred_labels"]
+        true_labels = logs["true_labels"]
+        self._add_confusion_matrix(
+            preds_labels, true_labels, "test_data", logs["model_name"]
+        )
+
+    def _add_metrics_scalars(self, metrics: dict, data_kind, epoch: int):
+        for data_kind in data_kind:
+            for metric_name, metric_value in metrics[data_kind].items():
+                self.writer.add_scalar(
+                    f"{data_kind}/{metric_name}", metric_value, epoch
                 )
-                batch = batch
 
-                outputs = model(batch)
-                preds = outputs[1] if task == "sr_classifier" else outputs
-                class_labels = labels[1] if task == "sr_classifier" else labels
-
-                pred_labels = preds.cpu().detach().numpy().reshape(-1, 12)
-
-                pred_labels = np.argmax(pred_labels, axis=1)
-                preds_list.append(pred_labels)
-                trues_list.append(class_labels.cpu().detach().numpy().reshape(-1))
-                # trues.append(labels.cpu().detach().numpy().reshape(-1))
-
-            return preds_list, trues_list
-
-        if logs is None:
-            return
-
-        if self.with_cm:
-            model_cls = logs["model"]
-            task = logs["task"]
-            for file_name in os.listdir(self.best_model_path):
-                if file_name.endswith(".pth"):
-                    model_path = os.path.join(self.best_model_path, file_name)
-                    model, _, _, _ = model_cls.load_model(self.device, model_path)
-                    for data_name in ["data_test", "data_validation"]:
-                        data_loader = logs[data_name]
-                        if task == "classifier" or task == "sr_classifier":
-                            preds, trues = _get_preds_for_best_models(
-                                model, data_loader, task
-                            )
-                            preds = np.concatenate(preds, axis=0)
-                            trues = np.concatenate(trues, axis=0)
-                            matrix_name = f"{data_name}_{file_name.split('.')[0]}"
-                            self._add_cm(preds, trues, matrix_name)
-
+    def _add_confusion_matrix(self, true_labels, pred_labels, data_name, model_name):
+        preds = np.concatenate(pred_labels, axis=0)
+        trues = np.concatenate(true_labels, axis=0)
+        matrix_name = f"{data_name}_{model_name}"
+        self._add_cm(preds, trues, matrix_name)
         self.writer.close()
-
-    def on_epoch_end(self, epoch: int, logs: Optional[dict] = None) -> None:
-        if logs is None:
-            return
-        metrics = logs["metrics"]
-        for data in ["train", "val"]:
-            for metric_name, metric_value in metrics[data].items():
-                self.writer.add_scalar(f"{data}/{metric_name}", metric_value, epoch)

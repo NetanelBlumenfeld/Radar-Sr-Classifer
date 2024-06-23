@@ -31,7 +31,10 @@ class BasicMetricTracker:
 
 class LossMetricTracker:
     def __init__(self, loss_metrics: list[dict]):
-        self.metrics = [BasicMetricTracker(**metric) for metric in loss_metrics]
+        self.metrics = {
+            metric["metric"].name: BasicMetricTracker(**metric)
+            for metric in loss_metrics
+        }
         self._set_name()
         self.total_loss = []
         self.running_total = 0
@@ -39,25 +42,25 @@ class LossMetricTracker:
     @property
     def value(self) -> dict[str, float]:
         res = {"total_loss": sum(self.total_loss) / (self.running_total + EPSILON)}
-        for metric in self.metrics:
-            res[f"loss_{metric.name}"] = metric.value
+        for metric_name, metric in self.metrics.items():
+            res[f"loss_{metric_name}"] = metric.value
         return res
 
     def _set_name(self):
         self.name = "loss"
-        for m in self.metrics:
+        for m in self.metrics.values():
             self.name += "_" + m.name
 
     def reset(self):
         self.running_total = 0
         self.total_loss = []
-        for metric in self.metrics:
+        for metric in self.metrics.values():
             metric.reset()
 
     def update(self, preds: torch.Tensor, true: torch.Tensor):
         loss = 0
         self.running_total += 1
-        for metric in self.metrics:
+        for metric in self.metrics.values():
             sub_loss = metric.update(preds, true)
             loss += sub_loss * metric.wight
         self.total_loss.append(loss.item())
@@ -66,26 +69,26 @@ class LossMetricTracker:
 
 class AccMetricTracker:
     def __init__(self, acc_metrics: list[MetricCriterion]):
-        self.metrics = []
+        self.metrics = {}
         for metric in acc_metrics:
             if metric.name == "ClassifierAccuracy":
-                self.metrics.append(AccuracyMetric())
+                self.metrics[metric.name] = AccuracyMetric()
             else:
-                self.metrics.append(BasicMetricTracker(metric))
+                self.metrics[metric.name] = BasicMetricTracker(metric)
 
     @property
     def value(self) -> dict[str, float]:
         res = {}
-        for metric in self.metrics:
-            res[f"acc_{metric.name}"] = metric.value
+        for metric_name, metric in self.metrics.items():
+            res[f"acc_{metric_name}"] = metric.value
         return res
 
     def reset(self):
-        for metric in self.metrics:
+        for metric in self.metrics.values():
             metric.reset()
 
     def update(self, preds: torch.Tensor, true: torch.Tensor):
-        for metric in self.metrics:
+        for metric in self.metrics.values():
             _ = metric.update(preds, true)
 
 

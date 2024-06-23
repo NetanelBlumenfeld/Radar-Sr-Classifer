@@ -1,6 +1,9 @@
+import numpy as np
 import torch
 import torch.nn as nn
 from gestures.network.metric.ssim import MS_SSIM, SSIM
+
+EPSILON = 1e-6
 
 
 class Psnr(nn.Module):
@@ -78,12 +81,13 @@ class AccuracyMetric:
 
     @property
     def value(self):
-        # return {"acc": 100 * (sum(self.values) / self.running_total)}
-        return sum(self.values) / (self.running_total)
+        return sum(self.values) / (self.running_total + EPSILON)
 
     def update(self, outputs: torch.Tensor, labels: torch.Tensor):
         correct, total = self.metric_function(outputs, labels)
         preds = outputs.cpu().detach().numpy().reshape(-1, 12)
+        labels = labels.cpu().detach().numpy().reshape(-1)
+        preds = np.argmax(preds, axis=1)
 
         self.values.append(correct)
         self.true_labels.append(labels)
