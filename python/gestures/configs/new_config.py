@@ -29,8 +29,10 @@ gestures = [
 ]
 
 pc, data_dir, output_dir, device = get_pc_cgf()
+
 task = "sr_classifier"  # task = ["sr", "classifier", "sr_classifier"]
 epochs = 5
+
 lr = 0.0015
 
 
@@ -59,7 +61,7 @@ pr_funcs = {
         ToTensor(),
         ComplexToReal(),
         DownSampleOffLine(D=1, original_dim=data_config["original_dims"]),
-        # DopplerMaps(),
+        DopplerMaps(),
     ),
     "on_train_process": None,
     "hr_to_lr": torch.nn.Sequential(

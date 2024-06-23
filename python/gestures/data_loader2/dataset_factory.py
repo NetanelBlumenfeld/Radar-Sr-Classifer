@@ -72,8 +72,10 @@ class SrClassifierDataset(Dataset):
         file = self.files[idx]
         data = np.load(os.path.join(self.base_dir, file))
         low_res_data, high_res_data = self.process_data(data)
+        turn low_res_data, (high_res_data, label)
         label = construct_label(file, self.gestures, data.shape[0])
-        return low_res_data, (high_res_data, label)
+        return (low_res_data, high_res_data, label)
+
 
     def process_data(self, high_res_data: np.ndarray) -> tuple[torch.Tensor]:
         low_res_data = ToTensor()(high_res_data)
