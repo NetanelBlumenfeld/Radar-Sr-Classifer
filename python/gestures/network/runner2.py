@@ -39,6 +39,18 @@ def validate(model, dataset: DataLoader, device, loss_metric, acc_metric):
             torch.cuda.empty_cache()
 
 
+def get_pred_true_labels(task, acc_metric):
+    if task == "classifier":
+        true = acc_metric.metrics["ClassifierAccuracy"].true_labels
+        pred = acc_metric.metrics["ClassifierAccuracy"].pred_labels
+    elif task == "sr_classifier":
+        true = acc_metric.classifier_acc.metrics["ClassifierAccuracy"].true_labels
+        pred = acc_metric.classifier_acc.metrics["ClassifierAccuracy"].pred_labels
+    else:
+        raise ValueError(f"Unknown task: {task}")
+    return true, pred
+
+
 class Runner:
     def __init__(
         self,
@@ -130,7 +142,7 @@ class Runner:
             self.lr_s.step()
             self.logs["train_info"]["lr"] = self.optimizer.param_groups[0]["lr"]
 
-            self.test_evaluation()
+        self.test_evaluation()
         self.callbacks.on_train_end(self.logs)
 
     def test_evaluation(self):
@@ -153,11 +165,9 @@ class Runner:
                 self.logs["metrics"]["test"] = (
                     self.acc_metric.value | self.loss_metric.value
                 )
-                self.logs["true_labels"] = self.acc_metric.metrics[
-                    "ClassifierAccuracy"
-                ].true_labels
-                self.logs["pred_labels"] = self.acc_metric.metrics[
-                    "ClassifierAccuracy"
-                ].pred_labels
+                self.logs["true_labels"], self.logs["pred_labels"] = (
+                    get_pred_true_labels(self.task, self.acc_metric)
+                )
+
                 self.logs["model_name"] = model_name
                 self.callbacks.on_eval_end(self.logs)

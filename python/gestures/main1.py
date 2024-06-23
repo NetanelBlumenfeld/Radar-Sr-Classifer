@@ -3,9 +3,7 @@ import os
 import torch
 from gestures.configs import new_config as cfg1
 from gestures.data_loader1.load import get_data_loader
-
-# from gestures.data_loader.tiny_data_loader import get_tiny_data_loader
-from gestures.network.experiment_tracker import get_time_in_string
+from gestures.network.callbacks.callback_logger import get_time_in_string
 from gestures.network.runner import Runner
 from gestures.setup import setup_callbacks, setup_model
 

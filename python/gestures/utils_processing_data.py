@@ -14,9 +14,9 @@ class ToTensor(torch.nn.Module):
         return x
 
 
-class NormalizeOneSample(torch.nn.Module):
+class NormalizeOneSample1(torch.nn.Module):
     def __init__(self):
-        super(NormalizeOneSample, self).__init__()
+        super(NormalizeOneSample1, self).__init__()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         assert x.ndim == 4
@@ -31,9 +31,9 @@ class NormalizeOneSample(torch.nn.Module):
         return x
 
 
-class NormalizeBatch(torch.nn.Module):
+class NormalizeBatch1(torch.nn.Module):
     def __init__(self):
-        super(NormalizeBatch, self).__init__()
+        super(NormalizeBatch1, self).__init__()
         self.one_sample_norm = NormalizeOneSample()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -45,6 +45,38 @@ class NormalizeBatch(torch.nn.Module):
         return x
 
 
+class NormalizeOneSample(torch.nn.Module):
+    def __init__(self):
+        super(NormalizeOneSample, self).__init__()
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        assert x.ndim == 4
+        x_abs = torch.abs(x)
+        min_val = (
+            x_abs.view(x.shape[0], x.shape[1], -1)
+            .min(dim=-1, keepdim=True)[0]
+            .view(x.shape[0], x.shape[1], 1, 1)
+        )
+        max_val = (
+            x_abs.view(x.shape[0], x.shape[1], -1)
+            .max(dim=-1, keepdim=True)[0]
+            .view(x.shape[0], x.shape[1], 1, 1)
+        )
+        x = (x - min_val) / (max_val - min_val + 1e-8)
+        return x
+
+
+class NormalizeBatch(torch.nn.Module):
+    def __init__(self):
+        super(NormalizeBatch, self).__init__()
+        self.one_sample_norm = NormalizeOneSample()
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        assert x.ndim == 5
+        x = torch.stack([self.one_sample_norm(sample) for sample in x])
+        return x
+
+
 class ComplexToRealOneSample(torch.nn.Module):
     def __init__(self):
         super(ComplexToRealOneSample, self).__init__()
@@ -52,8 +84,8 @@ class ComplexToRealOneSample(torch.nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         assert x.ndim == 4
         # x dims (5,2,32,492)
-        # x dims output (2,5,2,32,492)
-        return torch.stack((x.real, x.imag), dim=0)
+        # x dims output (5,2,2,32,492) (sequence_length, sensors,channels, H, W)
+        return torch.stack((x.real, x.imag), dim=2)
 
 
 class ComplexToRealBatch(torch.nn.Module):
@@ -63,8 +95,8 @@ class ComplexToRealBatch(torch.nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         assert x.ndim == 5
         # x dims (N,5,2,32,492)
-        # x dims output (N,2,5,2,32,492)
-        return torch.stack((x.real, x.imag), dim=1)
+        # x dims output (N,5,2,2,32,492) (batch sequence_length, sensors,channels, H, W)
+        return torch.stack((x.real, x.imag), dim=3)
 
 
 class RealToComplexOneSample(torch.nn.Module):
@@ -86,10 +118,10 @@ class RealToComplexBatch(torch.nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         assert x.ndim == 6
-        # x dims (N,2,5,2,32,492)
+        # x dims (N,5,2,2,32,492)
         # x dims output (N,5,2,32,492)
-        x_real = x[:, 0]
-        x_imag = x[:, 1]
+        x_real = x[:, :, :, 0]
+        x_imag = x[:, :, :, 1]
         return torch.complex(x_real, x_imag)
 
 
