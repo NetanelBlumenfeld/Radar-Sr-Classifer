@@ -138,11 +138,7 @@ _save_model = {
     },
 }
 mode = 0
-_progress = {
-    "active": False,
-    "args": {"verbose": mode},
-    "need_dir": True if mode == 2 else False,
-}  # 0 - progress bar, 1 - print, 2 - logger
+
 _lr_scheduler = {
     "active": False,
     "need_dir": False,
@@ -156,7 +152,6 @@ _logger = {
 callbacks_cfg = {
     "tensor_board": _tensor_board,
     "save_model": _save_model,
-    "progress": _progress,
     "lr_scheduler": _lr_scheduler,
     "logger": _logger,
 }

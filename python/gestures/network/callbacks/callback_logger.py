@@ -43,7 +43,7 @@ class Logger(CallbackProtocol):
             res += f"{metric_name}: {metric_value:.4f} "
         return res
 
-    def on_train_begin(self, logs: Optional[dict] = None) -> None:
+    def on_train_begin(self, logs: dict | None = None) -> None:
         "log description about the data, model, training config, base path for outputs"
         if logs:
             txt1 = f" \n Training started at {get_time_in_string()}"
@@ -52,7 +52,7 @@ class Logger(CallbackProtocol):
             txt = txt1 + txt2 + txt3
             self.logger.info(txt)
 
-    def on_eval_end(self, logs: Optional[dict] = None) -> None:
+    def on_eval_end(self, logs: dict | None = None) -> None:
         "log the best model path"
         if logs:
             txt1 = "\nTest result"
@@ -62,7 +62,7 @@ class Logger(CallbackProtocol):
             txt = txt1 + txt2
             self.logger.info(txt)
 
-    def on_epoch_end(self, epoch: int, logs: Optional[dict] = None) -> None:
+    def on_epoch_end(self, epoch: int, logs: dict | None = None) -> None:
         "log Epoch number, train and val metrics"
         if logs:
             lr = logs["train_info"]["lr"]
@@ -71,3 +71,9 @@ class Logger(CallbackProtocol):
             txt3 = f"\n Val - {self._print_metrics(logs['metrics']['val'])}"
             txt = txt1 + txt2 + txt3
             self.logger.info(txt)
+        
+    def on_train_end(self, logs: dict | None = None) -> None:
+        handlers = self.logger.handlers[:]
+        for handler in handlers:
+            handler.close()
+            self.logger.removeHandler(handler)

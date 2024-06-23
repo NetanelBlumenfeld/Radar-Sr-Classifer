@@ -148,24 +148,91 @@ class DopplerMapBatch(torch.nn.Module):
 
 
 class DownSampleOneSample(torch.nn.Module):
-    def __init__(self, D: int):
+    def __init__(self, dx: int, dy: int, original_dims: bool = False):
         super(DownSampleOneSample, self).__init__()
-        self.D = D
+        self.dx = dx
+        self.dy = dy
+        self.original_dims = original_dims
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         assert x.ndim == 4  # (5,2,32,492)
-        if self.D == 1:
+        if self.dx == 1 and self.dy == 1:
             return x
-        return x[:, :, :: self.D, :: self.D]
+        ds_data = x[:, :, :: self.dy, :: self.dx]
+        if self.original_dims:
+            return self._interpolate(ds_data)
+        return ds_data
+
+    def _interpolate(self, input_tensor):
+        # Separate real and imaginary parts
+        real_part = input_tensor.real
+        imaginary_part = input_tensor.imag
+
+        # Calculate the new size based on scale factors
+        new_height = int(real_part.shape[-2] * self.dy)
+        new_width = int(real_part.shape[-1] * self.dx)
+
+        # Perform interpolation on both real and imaginary parts
+        interpolated_real = F.interpolate(
+            real_part,
+            size=(new_height, new_width),
+            mode="bilinear",
+            align_corners=False,
+        )
+        interpolated_imaginary = F.interpolate(
+            imaginary_part,
+            size=(new_height, new_width),
+            mode="bilinear",
+            align_corners=False,
+        )
+
+        # Combine interpolated real and imaginary parts back into a complex tensor
+        interpolated_tensor = torch.complex(interpolated_real, interpolated_imaginary)
+
+        return interpolated_tensor
 
 
 class DownSampleBatch(torch.nn.Module):
-    def __init__(self, D: int):
+    def __init__(self, dx: int, dy: int, original_dims: bool = False):
+
         super(DownSampleBatch, self).__init__()
-        self.D = D
+        self.dx = dx
+        self.dy = dy
+        self.original_dims = original_dims
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         assert x.ndim == 5  # (N,5,2,32,492)
-        if self.D == 1:
+        if self.dx == 1 and self.dy == 1:
             return x
-        return x[:, :, :, :: self.D, :: self.D]
+        ds_data = x[:, :, :, :: self.dy, :: self.dx]
+        if self.original_dims:
+            return self._interpolate(ds_data)
+        return ds_data
+
+    def _interpolate(self, data):
+        # Separate real and imaginary parts
+        real_part = data.real
+        imaginary_part = data.imag
+
+        # Calculate the new size based on scale factors
+        new_height = int(real_part.shape[-2] * self.dy)
+        new_width = int(real_part.shape[-1] * self.dx)
+
+        # Perform interpolation on both real and imaginary parts
+        interpolated_real = F.interpolate(
+            real_part,
+            size=(new_height, new_width),
+            mode="bilinear",
+            align_corners=False,
+        )
+        interpolated_imaginary = F.interpolate(
+            imaginary_part,
+            size=(new_height, new_width),
+            mode="bilinear",
+            align_corners=False,
+        )
+
+        # Combine interpolated real and imaginary parts back into a complex tensor
+        interpolated_tensor = torch.complex(interpolated_real, interpolated_imaginary)
+
+        return interpolated_tensor

@@ -3,81 +3,98 @@ import os
 import torch
 from gestures.configs import new_config as cfg1
 from gestures.data_loader2.dataset_factory import get_data_loader
-
-# from gestures.data_loader.tiny_data_loader import get_tiny_data_loader
 from gestures.network.callbacks.callback_logger import get_time_in_string
 from gestures.network.runner2 import Runner
-from gestures.setup import setup_callbacks, setup_model
+from gestures.setup import get_pc_cgf, setup_callbacks, setup_model
+from gestures.utils_processing_data import (
+    ComplexToRealOneSample,
+    DopplerMapOneSample,
+    DownSampleOneSample,
+    NormalizeOneSample,
+    ToTensor,
+)
 
 if __name__ == "__main__":
 
-    data_config = cfg1.data_config
-    main_config = cfg1.main_config
-    data_dir, output_dir, device = (
-        main_config["data_dir"],
-        main_config["output_dir"],
-        main_config["device"],
-    )
-    files = os.listdir("/Users/netanelblumenfeld/Downloads/11G/tt")
-    files = [file for file in files if file.endswith(".npy")]
+    pc, data_dir, output_dir, device = get_pc_cgf()
+    task = "classifier"  # task = ["sr", "classifier", "sr_classifier"]
+    original_dims = True if task == "classifier" else False
+    for x, y in [(1, 1), (1, 2), (2, 1)]:
+        batch_size = 50
+        dx, dy = x, y
+        epochs = 5
 
-    gestures = [
-        "PinchIndex",
-        "PinchPinky",
-        "FingerSlider",
-        "FingerRub",
-        "SlowSwipeRL",
-        "FastSwipeRL",
-        "Push",
-        "Pull",
-        "PalmTilt",
-        "Circle",
-        "PalmHold",
-        "NoHand",
-    ]
-    base_dir = "/Users/netanelblumenfeld/Downloads/11G/tt"
+        gestures = [
+            "PinchIndex",
+            "PinchPinky",
+            "FingerSlider",
+            "FingerRub",
+            "SlowSwipeRL",
+            "FastSwipeRL",
+            "Push",
+            "Pull",
+            "PalmTilt",
+            "Circle",
+            "PalmHold",
+            "NoHand",
+        ]
+        pre_processing_funcs = {
+            "classifier": torch.nn.Sequential(
+                ToTensor(),
+                DownSampleOneSample(dx=dx, dy=dy, original_dims=original_dims),
+                NormalizeOneSample(),
+                DopplerMapOneSample(),
+            ),
+            "sr_classifier": {
+                "hr": torch.nn.Sequential(
+                    ToTensor(), NormalizeOneSample(), ComplexToRealOneSample()
+                ),
+                "lr": torch.nn.Sequential(
+                    ToTensor(),
+                    DownSampleOneSample(dx=dx, dy=dy, original_dims=original_dims),
+                    NormalizeOneSample(),
+                    ComplexToRealOneSample(),
+                ),
+            },
+        }
 
-    data_loader = get_data_loader(main_config["task"], files, 6, gestures, base_dir)
-    dummy_tensor = torch.randn(10, 10, device=device)
+        data_loader = get_data_loader(
+            task, batch_size, gestures, data_dir, pre_processing_funcs[task]
+        )
+        dummy_tensor = torch.randn(10, 10, device=device)
 
-    # loop for different ds factors
-    extra_info = "not_norm_doppler"
+        # getting model
+        model, optimizer, acc, loss_metric = setup_model(
+            task=task,
+            model_cfg=cfg1.model_config,
+            device=device,
+        )
 
-    # getting model
-    model, optimizer, acc, loss_metric = setup_model(
-        task=main_config["task"],
-        model_cfg=cfg1.model_config,
-        device=device,
-    )
+        # experiment name
+        data_pre_name = f"dsx_{dx}_dsy_{dy}_original_dim_{original_dims}"
+        experiment_name = os.path.join(
+            task,
+            f"{model.model_name}_{loss_metric.name}",
+            data_pre_name,
+            get_time_in_string(),
+        )
 
-    # experiment name
-    data_pre_name = (
-        f"ds_{data_config['ds_factor']}_original_dim_{data_config['original_dims']}"
-    )
-    data_pre_name += f"_{extra_info}" if extra_info else ""
-    experiment_name = os.path.join(
-        main_config["task"],
-        f"{model.model_name}_{loss_metric.name}",
-        data_pre_name,
-        get_time_in_string(),
-    )
+        # callbacks
+        base_dir = os.path.join(output_dir, experiment_name)
+        callbacks = setup_callbacks(cfg1.callbacks_cfg, base_dir=base_dir)
 
-    # callbacks
-    base_dir = os.path.join(output_dir, experiment_name)
-    callbacks = setup_callbacks(cfg1.callbacks_cfg, base_dir=base_dir)
-
-    # #training
-    runner = Runner(
-        model=model,
-        loader_train=data_loader,
-        loader_validation=data_loader,
-        loader_test=data_loader,
-        device=device,
-        optimizer=optimizer,
-        loss_metric=loss_metric,
-        acc_metric=acc,
-        callbacks=callbacks,
-        base_dir=base_dir,
-        task=main_config["task"],
-    )
-    runner.run(epochs=cfg1.epochs)
+        # #training
+        runner = Runner(
+            model=model,
+            loader_train=data_loader["tt"],
+            loader_validation=data_loader["tt"],
+            loader_test=data_loader["tt"],
+            device=device,
+            optimizer=optimizer,
+            loss_metric=loss_metric,
+            acc_metric=acc,
+            callbacks=callbacks,
+            base_dir=base_dir,
+            task=task,
+        )
+        runner.run(epochs=epochs)

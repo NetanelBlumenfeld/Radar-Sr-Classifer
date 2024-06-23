@@ -21,11 +21,11 @@ def get_pc_cgf() -> tuple[str, str, str, torch.device]:
     os_info = platform.system()
     if os_info == "Linux":
         data_dir = "/mnt/netanelnew/tinyradar/"
-        output_dir = "/home/netanel/code/outputs1/"
+        output_dir = "/home/netanel/code/out/"
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         pc = "4090"
     elif os_info == "Darwin":
-        data_dir = "/Users/netanelblumenfeld/Desktop/data/data_feat"
+        data_dir = "/Users/netanelblumenfeld/Downloads/11G"
         output_dir = "/Users/netanelblumenfeld/Desktop/bgu/Msc/code/outputs/"
         device = torch.device("cpu")
         pc = "mac"
