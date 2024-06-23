@@ -8,7 +8,7 @@ class BasicModel(nn.Module):
         self.model_name = model_name
 
     @classmethod
-    def load_model(
+    def load_pre_train_model(
         cls,
         device: torch.device,
         model_dir: str,

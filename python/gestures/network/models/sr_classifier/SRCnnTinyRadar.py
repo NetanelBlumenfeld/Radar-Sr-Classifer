@@ -1,5 +1,10 @@
 import torch
 from gestures.network.models.basic_model import BasicModel
+from gestures.utils_processing_data import (
+    DopplerMapBatch,
+    NormalizeBatch,
+    RealToComplexBatch,
+)
 
 EPSILON = 1e-8
 
@@ -58,20 +63,24 @@ class CombinedSRDrlnClassifier(BasicModel):
         self,
         sr: BasicModel,
         classifier: BasicModel,
-        scale_factor: int = 2,
+        scale_factor: int = 4,
     ):
         model_name = f"sr_{sr.model_name}_classifier_{classifier.model_name}"
         super(CombinedSRDrlnClassifier, self).__init__(model_name)
         self.drln = sr
         self.classifier = classifier
         self.scale_factor = scale_factor
+        self.data_processor = torch.nn.Sequential(
+            RealToComplexBatch(), NormalizeBatch(), DopplerMapBatch()
+        ).to(torch.device("cpu"))
 
     @staticmethod
     def reshape_to_model_output(batch, labels, device):
         high_res_imgs, true_label = labels
         high_res_imgs = high_res_imgs.permute(1, 0, 2, 3, 4, 5).to(device)
-        _, _, _, channels, H, W = high_res_imgs.size()
-        high_res_imgs = high_res_imgs.reshape(-1, channels, H, W)
+        sequence_length, batch_size, sensors, channels, H, W = high_res_imgs.size()
+        new_batch = sequence_length * batch_size * sensors
+        high_res_imgs = high_res_imgs.reshape(new_batch, channels, H, W)
         batch = batch.permute(1, 0, 2, 3, 4, 5).to(device)
         true_label = true_label.permute(1, 0).to(device)
 
@@ -81,9 +90,8 @@ class CombinedSRDrlnClassifier(BasicModel):
 
         # Assuming inputs is of shape [sequence_length, batch_size, sensors, channels, H, W]
         sequence_length, batch_size, sensors, channels, H, W = inputs.size()
-
-        # Reshape inputs to combine sequence_length and batch_size for batch processing
-        inputs = inputs.reshape(-1, channels, H, W)
+        new_batch = sequence_length * batch_size * sensors
+        inputs = inputs.reshape(new_batch, channels, H, W)
 
         # Apply super resolution in a batched manner
         inputs = self.drln(inputs)
@@ -98,33 +106,8 @@ class CombinedSRDrlnClassifier(BasicModel):
             W * self.scale_factor,
         )
 
-        real_part = rec_imgs[:, :, :, 0, :, :]
-        imaginary_part = rec_imgs[:, :, :, 1, :, :]
+        doppler_maps = self.data_processor(rec_imgs)
 
-        del rec_imgs
-
-        # Perform FFT on the complex tensor along the spatial dimension (assuming last dimension here)
-        # Note: Adjust the dim parameter based on how your data is structured and where FFT should be applied
-        doppler_maps = torch.abs(
-            torch.fft.fftshift(
-                torch.fft.fft(torch.complex(real_part, imaginary_part), dim=-2), dim=-2
-            )
-        )
-
-        # # Normalize the Doppler maps
-        # # Compute the min and max values for normalization across the spatial dimensions
-        # min_vals, _ = torch.min(doppler_maps, dim=-1, keepdim=True)
-        # min_vals, _ = torch.min(min_vals, dim=-2, keepdim=True)
-        # max_vals, _ = torch.max(doppler_maps, dim=-1, keepdim=True)
-        # max_vals, _ = torch.max(max_vals, dim=-2, keepdim=True)
-
-        # # Apply normalization using broadcasting
-        # EPSILON = 1e-8  # Small constant to avoid division by zero
-        # normalized_doppler_maps = (doppler_maps - min_vals) / (
-        #     max_vals - min_vals + EPSILON
-        # )
-
-        # Apply classifier on Doppler maps (assuming classifier can handle the batched format)
         y_labels_pred = self.classifier(doppler_maps)
 
         return inputs, y_labels_pred  # Adjust based on actual processing steps

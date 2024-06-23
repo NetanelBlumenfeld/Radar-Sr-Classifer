@@ -1,11 +1,18 @@
 from enum import Enum
 
 import torch.nn as nn
-from gestures.network.metric.loss import LossFunctionTinyRadarNN, MsssimLoss, SsimLoss
-from gestures.network.metric.metrics import AccuracyMetric, Msssim, Psnr, Ssim
+from gestures.network.metric.custom_criterion import (
+    AccuracyMetric,
+    LossFunctionTinyRadarNN,
+    Msssim,
+    MsssimLoss,
+    Psnr,
+    Ssim,
+    SsimLoss,
+)
 
 
-class LossType(Enum):
+class MetricCriterion(Enum):
     L1 = "L1"
     MSE = "MSE"
     CrossEntropy = "CrossEntropy"
@@ -19,7 +26,7 @@ class LossType(Enum):
     ClassifierAccuracy = "ClassifierAccuracy"
 
 
-class LossFactory:
+class CriterionFactory:
 
     loss_functions = {
         "L1": nn.L1Loss(),
@@ -37,6 +44,6 @@ class LossFactory:
 
     @staticmethod
     def get_loss_function(name):
-        if name not in LossFactory.loss_functions:
+        if name not in CriterionFactory.loss_functions:
             raise ValueError(f"Loss function '{name}' not recognized")
-        return LossFactory.loss_functions[name]
+        return CriterionFactory.loss_functions[name]

@@ -1,6 +1,9 @@
+import numpy as np
 import torch
 import torch.nn as nn
 from gestures.network.metric.ssim import MS_SSIM, SSIM
+
+EPSILON = 1e-6
 
 
 class Psnr(nn.Module):
@@ -71,20 +74,80 @@ class AccuracyMetric:
     def __init__(self):
         self.metric_function = ClassificationAccuracy()
         self.name = "classification"
+        self.true_labels = []
+        self.pred_labels = []
         self.values = []
         self.running_total = 0
 
     @property
     def value(self):
-        # return {"acc": 100 * (sum(self.values) / self.running_total)}
-        return sum(self.values) / (self.running_total)
+        return sum(self.values) / (self.running_total + EPSILON)
 
     def update(self, outputs: torch.Tensor, labels: torch.Tensor):
         correct, total = self.metric_function(outputs, labels)
+        preds = outputs.cpu().detach().numpy().reshape(-1, 12)
+        labels = labels.cpu().detach().numpy().reshape(-1)
+        preds = np.argmax(preds, axis=1)
 
         self.values.append(correct)
+        self.true_labels.append(labels)
+        self.pred_labels.append(preds)
         self.running_total += total
 
     def reset(self):
+        self.true_labels = []
+        self.pred_labels = []
         self.values = []
+
         self.running_total = 0.0
+
+
+class LossFunctionTinyRadarNN:
+    def __init__(
+        self,
+        numberOfTimeSteps: int = 5,
+    ):
+        self.numberOfTimeSteps = numberOfTimeSteps
+        self.loss_function = nn.CrossEntropyLoss()
+        self.name = "tiny_cross_entropy"
+
+    def __call__(self, outputs: torch.Tensor, labels: torch.Tensor):
+        """
+        compute loss for tiny radar classifier
+
+        Args:
+            outputs (torch.Tensor): the outputs from TinyRadarNN model
+            labels (torch.Tensor): labels for the data
+
+        Returns:
+            loss (float): the loss
+        """
+        loss = 0
+        for i in range(self.numberOfTimeSteps):
+            loss += self.loss_function(outputs[i], labels[i])
+        return loss / self.numberOfTimeSteps
+
+
+class MsssimLoss(torch.nn.Module):
+    def __init__(self, window_size=5, size_average=True, channel=2):
+        super(MsssimLoss, self).__init__()
+        self.msssim = Msssim()
+        self.name = "msssim_loss"
+
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    def forward(self, img1, img2):
+        ms_ssim = self.msssim(img1, img2)
+        return 1 - ms_ssim
+
+
+class SsimLoss(torch.nn.Module):
+    def __init__(self, window_size=5, size_average=True, channel=2):
+        super(SsimLoss, self).__init__()
+        self.ssim = Ssim()
+        self.name = "ssim_loss"
+
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    def forward(self, img1, img2):
+        return 1 - self.ssim(img1, img2)
