@@ -100,8 +100,8 @@ def get_data_loader(
 ) -> dict[str, DataLoader]:
     data_loaders: Dict[str, DataLoader] = {}
 
-    for data_kind in ["tt"]:
-        # for data_kind in ["train", "val", "test"]:
+    # for data_kind in ["tt"]:
+    for data_kind in ["train", "val", "test"]:
         data_dir = os.path.join(base_dir, data_kind)
         files = os.listdir(data_dir)
         files = [file for file in files if file.endswith(".npy")]
