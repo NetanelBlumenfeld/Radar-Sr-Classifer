@@ -108,9 +108,7 @@ class Runner:
 
         self.callbacks.on_train_begin(self.logs)
         for i in range(epochs):
-            print(i)
             self.callbacks.on_epoch_begin(i)
-            print(self.acc_metric.value)
             train(
                 self.model,
                 self.loader_train,
@@ -122,10 +120,8 @@ class Runner:
             self.logs["metrics"]["train"] = (
                 self.acc_metric.value | self.loss_metric.value
             )
-            print(self.acc_metric.value)
 
             self.reset()
-            print(self.acc_metric.value)
             validate(
                 self.model,
                 self.loader_validation,
@@ -135,9 +131,7 @@ class Runner:
             )
             self.logs["metrics"]["val"] = self.acc_metric.value | self.loss_metric.value
 
-            print(self.acc_metric.value)
             self.reset()
-            print(self.acc_metric.value)
             self.callbacks.on_epoch_end(i, self.logs)
             self.lr_s.step()
             self.logs["train_info"]["lr"] = self.optimizer.param_groups[0]["lr"]
