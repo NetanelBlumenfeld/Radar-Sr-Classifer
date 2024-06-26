@@ -34,7 +34,7 @@ if __name__ == "__main__":
     ]:
         batch_size = 100
         dx, dy = x, y
-        epochs = 100
+        epochs = 60
 
         gestures = [
             "PinchIndex",
