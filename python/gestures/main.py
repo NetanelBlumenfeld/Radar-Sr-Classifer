@@ -17,7 +17,7 @@ from gestures.utils_processing_data import (
 if __name__ == "__main__":
 
     pc, data_dir, output_dir, device = get_pc_cgf()
-    task = "classifier"  # task = ["sr", "classifier", "sr_classifier"]
+    task = "sr_classifier"  # task = ["sr", "classifier", "sr_classifier"]
     original_dims = True if task == "classifier" else False
     for x, y in [
         # (1, 1),
@@ -28,13 +28,13 @@ if __name__ == "__main__":
         # (4, 8),
         # (8, 4),
         (2, 4),
-        (4, 2),
+        # (4, 2),
         # (8, 2),
         # (2, 8),
     ]:
-        batch_size = 100
+        batch_size = 20
         dx, dy = x, y
-        epochs = 60
+        epochs = 100
 
         gestures = [
             "PinchIndex",

@@ -56,18 +56,16 @@ class ClassifierDataset(Dataset):
         label = construct_label(file, self.gestures, data.shape[0])
         return (data, label)
 
-    # def process_data(self, data):
-    #     data = ToTensor()(data)
-    #     data = NormalizeOneSample()(data)
-    #     data = DopplerMapOneSample()(data)
-    #     return data
-
 
 class SrClassifierDataset(Dataset):
-    def __init__(self, files: list[str], gestures: list[str], base_dir: str):
+    def __init__(
+        self, files: list[str], gestures: list[str], base_dir: str, pre_processing_funcs
+    ):
         self.files = files
         self.gestures = gestures
         self.base_dir = base_dir
+        self.hr_pre_processing_funcs = pre_processing_funcs["hr"]
+        self.lr_pre_processing_funcs = pre_processing_funcs["lr"]
 
     def __len__(self):
         return len(self.files)
@@ -75,8 +73,10 @@ class SrClassifierDataset(Dataset):
     def __getitem__(self, idx):
         file = self.files[idx]
         data = np.load(os.path.join(self.base_dir, file))
-        low_res_data, high_res_data = self.process_data(data)
-        label = construct_label(file, self.gestures, data[0].shape[0])
+        low_res_data = self.lr_pre_processing_funcs(data)
+        high_res_data = self.hr_pre_processing_funcs(data)
+        # low_res_data, high_res_data = self.process_data(data)
+        label = construct_label(file, self.gestures, data.shape[0])
         return low_res_data, (high_res_data, label)
 
     def process_data(
@@ -111,13 +111,15 @@ def get_data_loader(
                 files, gestures, data_dir, pre_processing_funcs
             )
         elif task == "sr_classifier":
-            data_set = SrClassifierDataset(files, gestures, data_dir)
+            data_set = SrClassifierDataset(
+                files, gestures, data_dir, pre_processing_funcs
+            )
         else:
             raise ValueError("Unknown task: " + task)
         shuffle = True if data_kind == "train" else False
 
         data_loaders[data_kind] = DataLoader(
-            data_set, batch_size=batch_size, shuffle=shuffle
+            data_set, batch_size=batch_size, shuffle=shuffle, num_workers=10
         )
 
     return data_loaders

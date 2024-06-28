@@ -28,14 +28,16 @@ class GaussianBlur(nn.Module):
 
 
 class DownsampleConv2d(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size=3, stride=4, padding=1):
+    def __init__(
+        self, in_channels=2, out_channels=2, kernel_size=3, stride=4, padding=1
+    ):
         super(DownsampleConv2d, self).__init__()
         self.conv = nn.Conv2d(
             in_channels,
             out_channels,
-            (1, stride),
-            stride=(1, stride),
-            padding=(0, padding),
+            (1, 2),
+            stride=(1, 2),
+            padding=(0, 0),
         )
 
     def forward(self, x):
