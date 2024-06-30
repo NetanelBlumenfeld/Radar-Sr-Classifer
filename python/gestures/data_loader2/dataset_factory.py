@@ -144,4 +144,4 @@ if __name__ == "__main__":
     ]
     k = 1
     base_dir = "/Users/netanelblumenfeld/Downloads/11G/test"
-    data_loader = get_data_loader("classification", files, 5, gestures, base_dir)
+    # data_loader = get_data_loader("classification", files, 5, gestures, base_dir)
