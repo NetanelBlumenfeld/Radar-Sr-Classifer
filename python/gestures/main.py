@@ -32,7 +32,7 @@ if __name__ == "__main__":
         # (8, 2),
         # (2, 8),
     ]:
-        batch_size = 20
+        batch_size = 60
         dx, dy = x, y
         epochs = 100
 
