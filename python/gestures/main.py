@@ -17,14 +17,14 @@ from gestures.utils_processing_data import (
 if __name__ == "__main__":
 
     pc, data_dir, output_dir, device = get_pc_cgf()
-    task = "classifier"  # task = ["sr", "classifier", "sr_classifier"]
+    task = "sr_classifier"  # task = ["sr", "classifier", "sr_classifier"]
     original_dims = True if task == "classifier" else False
     for x, y in [
         # (1, 1),
         # (1, 2),
         # (2, 1),
-        (2, 2),
-        (4, 4),
+        # (2, 2),
+        # (4, 4),
         (4, 8),
         # (8, 4),
         # (2, 4),
@@ -32,7 +32,7 @@ if __name__ == "__main__":
         # (8, 2),
         # (2, 8),
     ]:
-        batch_size = 60
+        batch_size = 20
         dx, dy = x, y
         epochs = 100
 
