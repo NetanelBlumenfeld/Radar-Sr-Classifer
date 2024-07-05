@@ -19,21 +19,9 @@ if __name__ == "__main__":
     pc, data_dir, output_dir, device = get_pc_cgf()
     task = "sr_classifier"  # task = ["sr", "classifier", "sr_classifier"]
     original_dims = True if task == "classifier" else False
-    for x, y in [
-        # (1, 1),
-        # (1, 2),
-        # (2, 1),
-        # (2, 2),
-        # (4, 4),
-        (4, 2),
-        # (8, 4),
-        # (2, 4),
-        # (4, 2),
-        # (8, 2),
-        # (2, 8),
-    ]:
+    for gamma in [0, 0.5, 1, 2]:
         batch_size = 20
-        dx, dy = x, y
+        dx, dy = 4, 4
         epochs = 100
 
         gestures = [
@@ -81,6 +69,7 @@ if __name__ == "__main__":
             model_cfg=cfg1.model_config,
             device=device,
         )
+        loss_metric.sr_weight = gamma
 
         # experiment name
         data_pre_name = f"dsx_{dx}_dsy_{dy}_original_dim_{original_dims}"

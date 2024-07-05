@@ -124,9 +124,7 @@ class LossMetricTrackerSrClassifier:
         return total_loss | sr_dict | classifier_dict
 
     def _set_name(self):
-        self.name = (
-            f"sr_{self.sr_tracker.name}_classifier_{self.classifier_tracker.name}"
-        )
+        self.name = f"sr_{self.sr_tracker.name}*{self.sr_weight}_classifier_{self.classifier_tracker.name}*{self.classifier_weight}"
 
     def reset(self):
         self.sr_tracker.reset()
