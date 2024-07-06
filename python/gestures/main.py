@@ -21,7 +21,7 @@ if __name__ == "__main__":
     original_dims = True if task == "classifier" else False
     for gamma in [0, 0.5, 1, 2]:
         batch_size = 20
-        dx, dy = 4, 4
+        dx, dy = 2, 2
         epochs = 100
 
         gestures = [
