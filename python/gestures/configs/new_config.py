@@ -87,8 +87,7 @@ _sr = {
     "model_cfg": model_cfg.safmn["model_cfg"],
     "model_ck": model_cfg.safmn["model_ck"],
     "loss": [
-        {"metric": MetricCriterion.L1, "wight": 0.5},
-        {"metric": MetricCriterion.MSSSIM, "wight": 0.5},
+        {"metric": MetricCriterion.L1, "wight": 1},
     ],
     "accuracy_metric": [
         MetricCriterion.PSNR,

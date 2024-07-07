@@ -19,83 +19,84 @@ if __name__ == "__main__":
     pc, data_dir, output_dir, device = get_pc_cgf()
     task = "sr_classifier"  # task = ["sr", "classifier", "sr_classifier"]
     original_dims = True if task == "classifier" else False
-    for gamma in [0, 0.5, 1, 2]:
-        batch_size = 20
-        dx, dy = 2, 2
-        epochs = 100
+    for ds in [2, 4]:
+        for gamma in [0, 0.5, 1, 2]:
+            batch_size = 100
+            dx, dy = 4, 4
+            epochs = 100
 
-        gestures = [
-            "PinchIndex",
-            "PinchPinky",
-            "FingerSlider",
-            "FingerRub",
-            "SlowSwipeRL",
-            "FastSwipeRL",
-            "Push",
-            "Pull",
-            "PalmTilt",
-            "Circle",
-            "PalmHold",
-            "NoHand",
-        ]
-        pre_processing_funcs = {
-            "classifier": torch.nn.Sequential(
-                ToTensor(),
-                DownSampleOneSample(dx=dx, dy=dy, original_dims=original_dims),
-                NormalizeOneSample(),
-                DopplerMapOneSample(),
-            ),
-            "sr_classifier": {
-                "hr": torch.nn.Sequential(
-                    ToTensor(), NormalizeOneSample(), ComplexToRealOneSample()
-                ),
-                "lr": torch.nn.Sequential(
+            gestures = [
+                "PinchIndex",
+                "PinchPinky",
+                "FingerSlider",
+                "FingerRub",
+                "SlowSwipeRL",
+                "FastSwipeRL",
+                "Push",
+                "Pull",
+                "PalmTilt",
+                "Circle",
+                "PalmHold",
+                "NoHand",
+            ]
+            pre_processing_funcs = {
+                "classifier": torch.nn.Sequential(
                     ToTensor(),
                     DownSampleOneSample(dx=dx, dy=dy, original_dims=original_dims),
                     NormalizeOneSample(),
-                    ComplexToRealOneSample(),
+                    DopplerMapOneSample(),
                 ),
-            },
-        }
+                "sr_classifier": {
+                    "hr": torch.nn.Sequential(
+                        ToTensor(), NormalizeOneSample(), ComplexToRealOneSample()
+                    ),
+                    "lr": torch.nn.Sequential(
+                        ToTensor(),
+                        DownSampleOneSample(dx=dx, dy=dy, original_dims=original_dims),
+                        NormalizeOneSample(),
+                        ComplexToRealOneSample(),
+                    ),
+                },
+            }
 
-        data_loader = get_data_loader(
-            task, batch_size, gestures, data_dir, pre_processing_funcs[task]
-        )
-        dummy_tensor = torch.randn(10, 10, device=device)
+            data_loader = get_data_loader(
+                task, batch_size, gestures, data_dir, pre_processing_funcs[task]
+            )
+            dummy_tensor = torch.randn(10, 10, device=device)
 
-        # getting model
-        model, optimizer, acc, loss_metric = setup_model(
-            task=task,
-            model_cfg=cfg1.model_config,
-            device=device,
-        )
-        loss_metric.sr_weight = gamma
+            # getting model
+            model, optimizer, acc, loss_metric = setup_model(
+                task=task,
+                model_cfg=cfg1.model_config,
+                device=device,
+            )
+            loss_metric.sr_weight = gamma
 
-        # experiment name
-        data_pre_name = f"dsx_{dx}_dsy_{dy}_original_dim_{original_dims}"
-        experiment_name = os.path.join(
-            task,
-            f"{model.model_name}_{loss_metric.name}",
-            data_pre_name,
-            get_time_in_string(),
-        )
+            # experiment name
+            data_pre_name = f"dsx_{dx}_dsy_{dy}_original_dim_{original_dims}"
+            experiment_name = os.path.join(
+                task,
+                f"{model.model_name}_{loss_metric.name}",
+                data_pre_name,
+                get_time_in_string(),
+            )
 
-        # callbacks
-        base_dir = os.path.join(output_dir, experiment_name)
-        callbacks = setup_callbacks(cfg1.callbacks_cfg, base_dir=base_dir)
+            # callbacks
+            base_dir = os.path.join(output_dir, experiment_name)
+            callbacks = setup_callbacks(cfg1.callbacks_cfg, base_dir=base_dir)
 
-        # #training
-        runner = Runner(
-            model=model,
-            loader_train=data_loader["train"],
-            loader_validation=data_loader["val"],
-            loader_test=data_loader["test"],
-            device=device,
-            optimizer=optimizer,
-            loss_metric=loss_metric,
-            acc_metric=acc,
-            callbacks=callbacks,
-            base_dir=base_dir,
-            task=task,
-        )
-        runner.run(epochs=epochs)
+            # #training
+            runner = Runner(
+                model=model,
+                loader_train=data_loader["train"],
+                loader_validation=data_loader["val"],
+                loader_test=data_loader["test"],
+                device=device,
+                optimizer=optimizer,
+                loss_metric=loss_metric,
+                acc_metric=acc,
+                callbacks=callbacks,
+                base_dir=base_dir,
+                task=task,
+            )
+            runner.run(epochs=epochs)

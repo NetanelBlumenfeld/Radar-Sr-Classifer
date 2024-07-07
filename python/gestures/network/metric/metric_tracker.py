@@ -105,7 +105,6 @@ class LossMetricTrackerSrClassifier:
         self.sr_weight = sr_weight
         self.classifier_weight = classifier_weight
         self.running_total = 0
-        self._set_name()
 
         self.sr_loss = []
         self.classifier_loss = []
@@ -123,8 +122,9 @@ class LossMetricTrackerSrClassifier:
         }
         return total_loss | sr_dict | classifier_dict
 
-    def _set_name(self):
-        self.name = f"sr_{self.sr_tracker.name}*{self.sr_weight}_classifier_{self.classifier_tracker.name}*{self.classifier_weight}"
+    @property
+    def name(self) -> str:
+        return f"sr_{self.sr_tracker.name}{self.sr_weight}_classifier_{self.classifier_tracker.name}{self.classifier_weight}"
 
     def reset(self):
         self.sr_tracker.reset()
