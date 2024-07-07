@@ -22,7 +22,7 @@ if __name__ == "__main__":
     for ds in [2, 4]:
         for gamma in [0, 0.5, 1, 2]:
             batch_size = 100
-            dx, dy = 4, 4
+            dx, dy = ds, ds
             epochs = 100
 
             gestures = [
