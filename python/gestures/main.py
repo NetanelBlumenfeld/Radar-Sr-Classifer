@@ -19,7 +19,7 @@ if __name__ == "__main__":
     pc, data_dir, output_dir, device = get_pc_cgf()
     task = "sr_classifier"  # task = ["sr", "classifier", "sr_classifier"]
     original_dims = True if task == "classifier" else False
-    for ds in [4]:
+    for ds in [2]:
         for gamma in [0, 0.5, 1, 2]:
             batch_size = 50
             dx, dy = ds, ds

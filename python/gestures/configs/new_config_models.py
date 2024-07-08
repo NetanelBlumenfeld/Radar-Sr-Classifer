@@ -21,7 +21,7 @@ safmn = {
         "dim": 36,
         "n_blocks": 8,
         "ffn_scale": 2.0,
-        "upscaling_factor": 4,
+        "upscaling_factor": 2,
         "channels": 2,
     },
     # "model_ck": "/home/netanel/code/outputs1/sr/SAFMN_loss_L1/ds_4_original_dim_False_not_norm_doppler/2024-03-07_17:57:12/model/total_loss.pth",
