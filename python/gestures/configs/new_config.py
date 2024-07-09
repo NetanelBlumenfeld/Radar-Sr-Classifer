@@ -45,7 +45,7 @@ main_config = {
 }
 
 data_config = {
-    "ds_factor": 4,
+    "ds_factor": 2,
     "original_dims": True if task == "classifier" else False,
 }
 
