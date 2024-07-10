@@ -119,7 +119,7 @@ def get_data_loader(
         shuffle = True if data_kind == "train" else False
 
         data_loaders[data_kind] = DataLoader(
-            data_set, batch_size=batch_size, shuffle=shuffle, num_workers=3
+            data_set, batch_size=batch_size, shuffle=shuffle, num_workers=10
         )
 
     return data_loaders
