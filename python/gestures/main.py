@@ -19,10 +19,10 @@ if __name__ == "__main__":
     pc, data_dir, output_dir, device = get_pc_cgf()
     task = "sr_classifier"  # task = ["sr", "classifier", "sr_classifier"]
     original_dims = True if task == "classifier" else False
-    for ds in [2]:
-        for gamma in [0, 0.5, 1, 2]:
-            batch_size = 50
-            dx, dy = ds, ds
+    for dim in [8, 16, 24, 36, 60, 72]:
+        for gamma in [1]:
+            batch_size = 3
+            dx, dy = 1, 4
             epochs = 100
 
             gestures = [
@@ -71,12 +71,13 @@ if __name__ == "__main__":
                 device=device,
             )
             loss_metric.sr_weight = gamma
+            model.drln.dim = dim
 
             # experiment name
             data_pre_name = f"dsx_{dx}_dsy_{dy}_original_dim_{original_dims}"
             experiment_name = os.path.join(
                 task,
-                f"{model.model_name}_{loss_metric.name}",
+                f"{model.model_name}_sfamn_dims_{dim}_{loss_metric.name}",
                 data_pre_name,
                 get_time_in_string(),
             )

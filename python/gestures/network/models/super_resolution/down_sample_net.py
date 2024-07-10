@@ -35,8 +35,8 @@ class DownsampleConv2d(nn.Module):
         self.conv = nn.Conv2d(
             in_channels,
             out_channels,
-            (2, 1),
-            stride=(2, 1),
+            (1, 4),
+            stride=(1, 4),
             padding=(0, 0),
         )
 
