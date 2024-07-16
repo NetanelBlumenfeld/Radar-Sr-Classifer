@@ -95,6 +95,42 @@ class SrClassifierDataset(Dataset):
         return low_res_data, high_res_data_tensor
 
 
+class SrDataset(Dataset):
+    def __init__(
+        self, files: list[str], gestures: list[str], base_dir: str, pre_processing_funcs
+    ):
+        self.files = files
+        self.gestures = gestures
+        self.base_dir = base_dir
+        self.hr_pre_processing_funcs = pre_processing_funcs["hr"]
+        self.lr_pre_processing_funcs = pre_processing_funcs["lr"]
+
+    def __len__(self):
+        return len(self.files)
+
+    def __getitem__(self, idx):
+        file = self.files[idx]
+        data = np.load(os.path.join(self.base_dir, file))
+        low_res_data = self.lr_pre_processing_funcs(data)
+        high_res_data = self.hr_pre_processing_funcs(data)
+        return low_res_data, high_res_data
+
+    def process_data(
+        self, high_res_data: np.ndarray
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        low_res_data = ToTensor()(high_res_data)
+        low_res_data = DownSampleOneSample(dx=16, dy=4, original_dims=True)(
+            low_res_data
+        )
+        low_res_data = NormalizeOneSample()(low_res_data)
+        low_res_data = ComplexToRealOneSample()(low_res_data)
+
+        high_res_data_tensor = ToTensor()(high_res_data)
+        high_res_data_tensor = NormalizeOneSample()(high_res_data_tensor)
+        high_res_data_tensor = ComplexToRealOneSample()(high_res_data_tensor)
+        return low_res_data, high_res_data_tensor
+
+
 def get_data_loader(
     task: str, batch_size: int, gestures: list[str], base_dir: str, pre_processing_funcs
 ) -> dict[str, DataLoader]:
@@ -114,12 +150,14 @@ def get_data_loader(
             data_set = SrClassifierDataset(
                 files, gestures, data_dir, pre_processing_funcs
             )
+        elif task == "sr":
+            data_set = SrDataset(files, gestures, data_dir, pre_processing_funcs)
         else:
             raise ValueError("Unknown task: " + task)
         shuffle = True if data_kind == "train" else False
 
         data_loaders[data_kind] = DataLoader(
-            data_set, batch_size=batch_size, shuffle=shuffle, num_workers=10
+            data_set, batch_size=batch_size, shuffle=shuffle, num_workers=5
         )
 
     return data_loaders

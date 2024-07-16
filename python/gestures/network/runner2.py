@@ -28,8 +28,12 @@ def train(model, loader_train, device, optimizer, loss_metric, acc_metric):
 
 def validate(model, dataset: DataLoader, device, loss_metric, acc_metric):
     model.eval()
+    i = 0
+    print(len(dataset))
     with torch.no_grad():
         for batch, labels in dataset:
+            print(i)
+            i += 1
             batch, labels = model.reshape_to_model_output(batch, labels, device)
             outputs = model(batch)
             _ = loss_metric.update(outputs, labels)

@@ -17,13 +17,13 @@ from gestures.utils_processing_data import (
 if __name__ == "__main__":
 
     pc, data_dir, output_dir, device = get_pc_cgf()
-    task = "sr_classifier"  # task = ["sr", "classifier", "sr_classifier"]
+    task = "classifier"  # task = ["sr", "classifier", "sr_classifier"]
     original_dims = True if task == "classifier" else False
-    for dim in [8, 16, 24, 36, 60, 72]:
-        for gamma in [1]:
-            batch_size = 20
+    for x in [1]:
+        for dim in [24, 36]:
+            batch_size = 30
             dx, dy = 1, 4
-            epochs = 100
+            epochs = 70
 
             gestures = [
                 "PinchIndex",
@@ -70,17 +70,18 @@ if __name__ == "__main__":
                 model_cfg=cfg1.model_config,
                 device=device,
             )
-            loss_metric.sr_weight = gamma
+            # loss_metric.sr_weight = gamma
             model.drln.dim = dim
 
             # experiment name
             data_pre_name = f"dsx_{dx}_dsy_{dy}_original_dim_{original_dims}"
             experiment_name = os.path.join(
                 task,
-                f"{model.model_name}_sfamn_dims_{dim}_{loss_metric.name}",
+                f"{model.model_name}_{loss_metric.name}",
                 data_pre_name,
                 get_time_in_string(),
             )
+            print(experiment_name)
 
             # callbacks
             base_dir = os.path.join(output_dir, experiment_name)

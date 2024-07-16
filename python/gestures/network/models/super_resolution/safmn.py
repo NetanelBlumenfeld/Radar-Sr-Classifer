@@ -174,11 +174,16 @@ class SAFMN(BasicModel):
 
     @staticmethod
     def reshape_to_model_output(low_res, high_res, device):
-        d0, d1, d2, d3, d4 = low_res.shape
-        low_res = low_res.reshape(d0 * d1, d2, d3, d4)
-        d0, d1, d2, d3, d4 = high_res.shape
-        high_res = high_res.reshape(d0 * d1, d2, d3, d4)
-        return low_res.to(device), high_res.to(device)
+        high_res_imgs = high_res.permute(1, 0, 2, 3, 4, 5).to(device)
+        sequence_length, batch_size, sensors, channels, H, W = high_res_imgs.size()
+        new_batch = sequence_length * batch_size * sensors
+        high_res_imgs = high_res_imgs.reshape(new_batch, channels, H, W)
+
+        low_res = low_res.permute(1, 0, 2, 3, 4, 5).to(device)
+        sequence_length, batch_size, sensors, channels, H, W = low_res.size()
+        new_batch = sequence_length * batch_size * sensors
+        low_res = low_res.reshape(new_batch, channels, H, W)
+        return low_res.to(device), high_res_imgs.to(device)
 
     def forward(self, x):
         x = self.to_feat(x)

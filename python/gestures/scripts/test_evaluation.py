@@ -2,72 +2,79 @@ import os
 
 import torch
 from gestures.configs import new_config as cfg1
-from gestures.data_loader1.load import get_data_loader
-
-# from gestures.data_loader.tiny_data_loader import get_tiny_data_loader
-from gestures.network.experiment_tracker import get_time_in_string
-from gestures.network.runner import Runner
-from gestures.setup import setup_callbacks, setup_model
+from gestures.data_loader2.dataset_factory import get_data_loader
+from gestures.network.callbacks.callback_logger import get_time_in_string
+from gestures.network.models.basic_model import BasicModel
+from gestures.network.runner2 import Runner, validate
+from gestures.setup import get_pc_cgf, setup_callbacks, setup_model
+from gestures.utils_processing_data import (
+    ComplexToRealOneSample,
+    DopplerMapOneSample,
+    DownSampleOneSample,
+    NormalizeOneSample,
+    ToTensor,
+)
 
 if __name__ == "__main__":
+    model_path = "/Users/netanelblumenfeld/Desktop/bgu/Msc/code/out_laptop/sr_classifier/sr_SAFMN_frozen_classifier_TinyRadar_sr_loss_L10.5_classifier_loss_TinyLoss1/dsx_4_dsy_4_original_dim_False/2024-07-11_09:37:13/model/total_loss.pth"
 
-    model_path = "/Users/netanelblumenfeld/Desktop/bgu/Msc/code/outputs1/sr_classifier/sr_SAFMN_classifier_TinyRadar_sr_loss_L1_classifier_loss_TinyLoss/ds_2_original_dim_False_not_norm_doppler/2024-06-01_11:59:42/model/total_loss.pth"
-    data_config = cfg1.data_config
-    main_config = cfg1.main_config
-    data_dir, output_dir, device = (
-        main_config["data_dir"],
-        main_config["output_dir"],
-        main_config["device"],
-    )
-    dummy_tensor = torch.randn(10, 10, device=device)
+    pc, data_dir, output_dir, device = get_pc_cgf()
+    task = "sr_classifier"  # task = ["sr", "classifier", "sr_classifier"]
+    original_dims = True if task == "classifier" else False
+    for x in [1]:
+        for dim in [24, 36]:
+            batch_size = 30
+            dx, dy = 1, 4
+            epochs = 70
 
-    # loop for different ds factors
-    extra_info = "not_norm_doppler"
+            gestures = [
+                "PinchIndex",
+                "PinchPinky",
+                "FingerSlider",
+                "FingerRub",
+                "SlowSwipeRL",
+                "FastSwipeRL",
+                "Push",
+                "Pull",
+                "PalmTilt",
+                "Circle",
+                "PalmHold",
+                "NoHand",
+            ]
+            pre_processing_funcs = {
+                "classifier": torch.nn.Sequential(
+                    ToTensor(),
+                    DownSampleOneSample(dx=dx, dy=dy, original_dims=original_dims),
+                    NormalizeOneSample(),
+                    DopplerMapOneSample(),
+                ),
+                "sr_classifier": {
+                    "hr": torch.nn.Sequential(
+                        ToTensor(), NormalizeOneSample(), ComplexToRealOneSample()
+                    ),
+                    "lr": torch.nn.Sequential(
+                        ToTensor(),
+                        DownSampleOneSample(dx=dx, dy=dy, original_dims=original_dims),
+                        NormalizeOneSample(),
+                        ComplexToRealOneSample(),
+                    ),
+                },
+            }
 
-    data_loaders = get_data_loader(
-        data_dir=main_config["data_dir"],
-        task=main_config["task"],
-        loader_cfg=cfg1.data_loader,
-        processing_func=cfg1.pr_funcs,
-        ds_factor=2,
-    )
-    # getting model
-    model_cls, optimizer, acc, loss_metric = setup_model(
-        task=main_config["task"],
-        model_cfg=cfg1.model_config,
-        device=device,
-    )
-    model, _, _, _ = model_cls.load_model(device, model_path)
+            data_loader = get_data_loader(
+                task, batch_size, gestures, data_dir, pre_processing_funcs[task]
+            )
 
-    # experiment name
-    data_pre_name = (
-        f"ds_{data_config['ds_factor']}_original_dim_{data_config['original_dims']}"
-    )
-    data_pre_name += f"_{extra_info}" if extra_info else ""
-    experiment_name = os.path.join(
-        main_config["task"],
-        f"{model.model_name}_{loss_metric.name}",
-        data_pre_name,
-        get_time_in_string(),
-    )
+            # getting model
+            qq, optimizer, acc, loss_metric = setup_model(
+                task=task,
+                model_cfg=cfg1.model_config,
+                device=device,
+            )
+            model, _, _, _ = BasicModel.load_pre_train_model(device, model_path)
 
-    # callbacks
-    base_dir = os.path.join(output_dir, experiment_name)
-    callbacks = setup_callbacks(cfg1.callbacks_cfg, base_dir=base_dir)
-
-    # #training
-    runner = Runner(
-        model=model,
-        loader_train=data_loaders["test"],
-        loader_validation=data_loaders["test"],
-        loader_test=data_loaders["test"],
-        device=device,
-        optimizer=optimizer,
-        loss_metric=loss_metric,
-        acc_metric=acc,
-        callbacks=callbacks,
-        base_dir=base_dir,
-        task=main_config["task"],
-    )
-    res = runner.validate("test", data_loaders["test"], model)
-    print(res)
+            loss_metric.reset()
+            acc.reset()
+            validate(model, data_loader["test"], device, loss_metric, acc)
+            print(acc.value)
+            print(loss_metric.value)
