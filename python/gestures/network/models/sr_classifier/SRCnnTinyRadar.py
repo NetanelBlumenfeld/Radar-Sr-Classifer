@@ -48,7 +48,7 @@ class CombinedSRDrlnClassifier(BasicModel):
 
         # Apply super resolution in a batched manner
         inputs = self.drln(inputs)
-        # inputs = self.down_sample_net(inputs)
+        inputs = self.down_sample_net(inputs)
 
         # Reshape rec_imgs back to separate sequence_length and batch_size, adjusting for scale_factor
         rec_imgs = inputs.reshape(
