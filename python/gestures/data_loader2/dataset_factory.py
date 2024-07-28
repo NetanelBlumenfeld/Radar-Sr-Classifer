@@ -95,6 +95,45 @@ class SrClassifierDataset(Dataset):
         return low_res_data, high_res_data_tensor
 
 
+class MultiSrClassifierDataset(Dataset):
+    def __init__(self, files: list[str], gestures: list[str], base_dir: str):
+        self.files = files
+        self.gestures = gestures
+        self.base_dir = base_dir
+        self.scale = 2
+
+    def __len__(self):
+        return len(self.files)
+
+    def __getitem__(self, idx):
+        file = self.files[idx]
+        data = np.load(os.path.join(self.base_dir, file))
+        low_res_data, high_res_data = self.process_data(data)
+        label = construct_label(file, self.gestures, data.shape[0])
+        return low_res_data, (high_res_data, label)
+
+    def process_data(
+        self, high_res_data: np.ndarray
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        scale = self.scale
+        # print(f"Scale is: {scale}")
+        low_res_data = ToTensor()(high_res_data)
+        low_res_data = DownSampleOneSample(dx=scale, dy=scale, original_dims=False)(
+            low_res_data
+        )
+        low_res_data = NormalizeOneSample()(low_res_data)
+        low_res_data = ComplexToRealOneSample()(low_res_data)
+
+        high_res_data_tensor = ToTensor()(high_res_data)
+        high_res_data_tensor = NormalizeOneSample()(high_res_data_tensor)
+        high_res_data_tensor = ComplexToRealOneSample()(high_res_data_tensor)
+        return low_res_data, high_res_data_tensor
+
+    def set_scale(self, new_scale: int):
+        self.scale = new_scale
+        print(f"New scale is: {self.scale}")
+
+
 class SrDataset(Dataset):
     def __init__(
         self, files: list[str], gestures: list[str], base_dir: str, pre_processing_funcs
@@ -152,6 +191,30 @@ def get_data_loader(
             )
         elif task == "sr":
             data_set = SrDataset(files, gestures, data_dir, pre_processing_funcs)
+        else:
+            raise ValueError("Unknown task: " + task)
+        shuffle = True if data_kind == "train" else False
+
+        data_loaders[data_kind] = DataLoader(
+            data_set, batch_size=batch_size, shuffle=shuffle, num_workers=5
+        )
+
+    return data_loaders
+
+
+def get_data_loader_multi(
+    task: str, batch_size: int, gestures: list[str], base_dir: str
+) -> dict[str, DataLoader]:
+    data_loaders: Dict[str, DataLoader] = {}
+
+    # for data_kind in ["tt"]:
+    for data_kind in ["train", "val", "test"]:
+        data_dir = os.path.join(base_dir, data_kind)
+        files = os.listdir(data_dir)
+        files = [file for file in files if file.endswith(".npy")]
+
+        if task == "sr_classifier":
+            data_set = MultiSrClassifierDataset(files, gestures, data_dir)
         else:
             raise ValueError("Unknown task: " + task)
         shuffle = True if data_kind == "train" else False

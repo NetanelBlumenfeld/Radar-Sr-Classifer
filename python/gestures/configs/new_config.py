@@ -30,7 +30,7 @@ gestures = [
 
 pc, data_dir, output_dir, device = get_pc_cgf()
 
-task = "sr_classifier"  # task = ["sr", "classifier", "sr_classifier"]
+task = "classifier"  # task = ["sr", "classifier", "sr_classifier"]
 epochs = 5
 
 lr = 0.0015
@@ -45,14 +45,14 @@ main_config = {
 }
 
 data_config = {
-    "ds_factor": 2,
+    "ds_factor": 4,
     "original_dims": True if task == "classifier" else False,
 }
 
-loaders = ["test"] if pc == "mac" else ["test"]
+loaders = ["val"] if pc == "mac" else ["val"]
 data_loader = {
     "data_dir": data_dir,
-    "batch_size": 3,
+    "batch_size": 30,
     "loaders": loaders,
 }
 pr_funcs = {
