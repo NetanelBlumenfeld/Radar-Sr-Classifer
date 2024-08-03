@@ -28,12 +28,8 @@ def train(model, loader_train: DataLoader, device, optimizer, loss_metric, acc_m
         optimizer.step()
         acc_metric.update(outputs, labels)
         # Update the scale based on your desired condition
-        if (
-            batch_idx + 1
-        ) % break_id == 0:  # Change the scale every 10 batches for example
+        if (batch_idx + 1) % 2 == 0:  # Change the scale every 10 batches for example
             if loader_train.dataset.scale == 2:
-                loader_train.dataset.set_scale(3)
-            elif loader_train.dataset.scale == 3:
                 loader_train.dataset.set_scale(4)
             elif loader_train.dataset.scale == 4:
                 loader_train.dataset.set_scale(2)
@@ -142,17 +138,17 @@ class Runner:
             )
 
             self.reset()
-            validate(
-                self.model,
-                self.loader_validation,
-                self.device,
-                self.loss_metric,
-                self.acc_metric,
-            )
-            self.logs["metrics"]["val"] = self.acc_metric.value | self.loss_metric.value
+            # validate(
+            #     self.model,
+            #     self.loader_validation,
+            #     self.device,
+            #     self.loss_metric,
+            #     self.acc_metric,
+            # )
+            # self.logs["metrics"]["val"] = self.acc_metric.value | self.loss_metric.value
 
-            self.reset()
-            self.callbacks.on_epoch_end(i, self.logs)
+            # self.reset()
+            # self.callbacks.on_epoch_end(i, self.logs)
             self.lr_s.step()
             self.logs["train_info"]["lr"] = self.optimizer.param_groups[0]["lr"]
 

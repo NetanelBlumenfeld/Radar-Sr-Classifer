@@ -20,10 +20,10 @@ if __name__ == "__main__":
     task = "sr_classifier"  # task = ["sr", "classifier", "sr_classifier"]
     original_dims = True if task == "classifier" else False
     for x in [1]:
-        for dim in [24, 36]:
-            batch_size = 30
+        for dim in [4, 8]:
+            batch_size = 25
             dx, dy = 1, 4
-            epochs = 70
+            epochs = 100
 
             gestures = [
                 "PinchIndex",

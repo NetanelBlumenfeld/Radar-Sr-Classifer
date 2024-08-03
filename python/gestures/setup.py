@@ -15,7 +15,10 @@ from gestures.network.metric.metric_tracker import (
 )
 from gestures.network.models.basic_model import BasicModel
 from gestures.network.models.classifiers.tiny_radar import TinyRadarNN
-from gestures.network.models.sr_classifier.SRCnnTinyRadar import MultiSRClassifier
+from gestures.network.models.sr_classifier.SRCnnTinyRadar import (
+    MultiSRClassifier,
+    RecSRClass,
+)
 from gestures.network.models.super_resolution.safmn import SAFMN
 
 
@@ -162,6 +165,43 @@ def setup_model_multi(
         model = MultiSRClassifier(
             sr2=sr2, sr3=sr3, sr4=sr4, classifier=classifier, device=device
         ).to(device)
+        loss_metric = LossMetricTrackerSrClassifier(
+            sr_tracker=loss_sr,
+            classifier_tracker=loss_classifier,
+            sr_weight=model_cfg[task]["loss"]["sr"]["wight"],
+            classifier_weight=model_cfg[task]["loss"]["classifier"]["wight"],
+        )
+        # acc
+        acc = AccMetricTrackerSrClassifier(sr_acc=acc_sr, classifier_acc=acc_classifier)
+        optimizer_class = model_cfg[task]["optimizer"]["class"]
+        optimizer_args = model_cfg[task]["optimizer"]["args"]
+        optimizer = optimizer_class(model.parameters(), **optimizer_args)
+    elif task == "sr":
+        model, optimizer, acc, loss_metric = sr_model(model_cfg[task], device)
+
+    elif task == "classifier":
+        model, optimizer, acc, loss_metric = classifier_model(model_cfg[task], device)
+
+    else:
+        raise ValueError(f"Unknown task: {task}")
+    return model, optimizer, acc, loss_metric
+
+
+def setup_model_rec(
+    task: str, model_cfg: dict, device: torch.device
+) -> tuple[BasicModel, torch.optim.Optimizer, Any, LossMetricTrackerSrClassifier]:
+    if task == "sr_classifier":
+        acc_sr = AccMetricTracker(model_cfg[task]["model"]["sr"]["accuracy_metric"])
+        loss_sr = LossMetricTracker(model_cfg[task]["model"]["sr"]["loss"])
+        sr2 = SAFMN(upscaling_factor=2).to(device)
+        acc_classifier = AccMetricTracker(
+            model_cfg[task]["model"]["classifier"]["accuracy_metric"]
+        )
+        loss_classifier = LossMetricTracker(
+            model_cfg[task]["model"]["classifier"]["loss1"]
+        )
+        classifier = TinyRadarNN()
+        model = RecSRClass(sr2=sr2, classifier=classifier, device=device).to(device)
         loss_metric = LossMetricTrackerSrClassifier(
             sr_tracker=loss_sr,
             classifier_tracker=loss_classifier,
