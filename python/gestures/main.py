@@ -20,8 +20,8 @@ if __name__ == "__main__":
     task = "sr_classifier"  # task = ["sr", "classifier", "sr_classifier"]
     original_dims = True if task == "classifier" else False
     for x in [1]:
-        for dim in [4, 8]:
-            batch_size = 25
+        for dim in [4, 8, 16]:
+            batch_size = 30
             dx, dy = 1, 4
             epochs = 100
 
@@ -77,7 +77,7 @@ if __name__ == "__main__":
             data_pre_name = f"dsx_{dx}_dsy_{dy}_original_dim_{original_dims}"
             experiment_name = os.path.join(
                 task,
-                f"{model.model_name}_{loss_metric.name}",
+                f"{model.model_name}_dims_{dim}_{loss_metric.name}",
                 data_pre_name,
                 get_time_in_string(),
             )
