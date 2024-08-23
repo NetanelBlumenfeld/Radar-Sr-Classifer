@@ -21,7 +21,7 @@ if __name__ == "__main__":
     task = "sr_classifier"  # task = ["sr", "classifier", "sr_classifier"]
     original_dims = True if task == "classifier" else False
     for x in [1]:
-        for dim in [4, 8, 16]:
+        for dim in [36]:
             batch_size = 30
             dx, dy = 4, 4
             epochs = 100
