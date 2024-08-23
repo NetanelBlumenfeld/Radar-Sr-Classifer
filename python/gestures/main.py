@@ -23,7 +23,7 @@ if __name__ == "__main__":
     for x in [1]:
         for dim in [4, 8, 16]:
             batch_size = 30
-            dx, dy = 1, 4
+            dx, dy = 4, 4
             epochs = 100
 
             gestures = [
