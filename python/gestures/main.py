@@ -7,6 +7,7 @@ from gestures.network.callbacks.callback_logger import get_time_in_string
 from gestures.network.runner2 import Runner
 from gestures.setup import get_pc_cgf, setup_callbacks, setup_model
 from gestures.utils_processing_data import (
+    ComplexGaussianNoiseTransform,
     ComplexToRealOneSample,
     DopplerMapOneSample,
     DownSampleOneSample,
@@ -52,6 +53,7 @@ if __name__ == "__main__":
                     ),
                     "lr": torch.nn.Sequential(
                         ToTensor(),
+                        ComplexGaussianNoiseTransform(),
                         DownSampleOneSample(dx=dx, dy=dy, original_dims=original_dims),
                         NormalizeOneSample(),
                         ComplexToRealOneSample(),

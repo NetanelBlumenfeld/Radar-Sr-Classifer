@@ -6,7 +6,6 @@ from gestures.utils_processing_data import (
     NormalizeBatch,
     RealToComplexBatch,
 )
-from pydantic import BaseModel
 
 EPSILON = 1e-8
 

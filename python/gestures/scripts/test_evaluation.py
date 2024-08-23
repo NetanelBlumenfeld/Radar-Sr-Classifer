@@ -15,33 +15,10 @@ from gestures.utils_processing_data import (
     ToTensor,
 )
 
-
-class A(torch.nn.Module):
-    def __init__(self):
-        super(A, self).__init__()
-
-    @staticmethod
-    def reshape_to_model_output(low_res, high_res, device):
-        high_res_imgs = high_res.permute(1, 0, 2, 3, 4, 5).to(device)
-        sequence_length, batch_size, sensors, channels, H, W = high_res_imgs.size()
-        new_batch = sequence_length * batch_size * sensors
-        high_res_imgs = high_res_imgs.reshape(new_batch, channels, H, W)
-
-        low_res = low_res.permute(1, 0, 2, 3, 4, 5).to(device)
-        sequence_length, batch_size, sensors, channels, H, W = low_res.size()
-        new_batch = sequence_length * batch_size * sensors
-        low_res = low_res.reshape(new_batch, channels, H, W)
-        return low_res.to(device), high_res_imgs.to(device)
-
-    def forward(self, x):
-        return x
-
-
 if __name__ == "__main__":
-    model_path = "/Users/netanelblumenfeld/Desktop/bgu/Msc/code/outputs1/classifier/TinyRadar_loss_TinyLoss/ds_4_original_dim_True_not_norm_doppler/2024-03-04_12:41:39/model/total_loss.pth"
-
+    model_path = "/Users/netanelblumenfeld/Desktop/bgu/Msc/code/out/sr_classifier/rec/total_loss.pth"
     pc, data_dir, output_dir, device = get_pc_cgf()
-    task = "classifier"  # task = ["sr", "classifier", "sr_classifier"]
+    task = "sr_classifier"  # task = ["sr", "classifier", "sr_classifier"]
     original_dims = True if task == "classifier" else False
     for x in [1]:
         for dim in [36]:
@@ -76,7 +53,7 @@ if __name__ == "__main__":
                     ),
                     "lr": torch.nn.Sequential(
                         ToTensor(),
-                        DownSampleOneSample(dx=dx, dy=dy, original_dims=True),
+                        DownSampleOneSample(dx=dx, dy=dy, original_dims=original_dims),
                         NormalizeOneSample(),
                         ComplexToRealOneSample(),
                     ),
@@ -87,7 +64,7 @@ if __name__ == "__main__":
                     ),
                     "lr": torch.nn.Sequential(
                         ToTensor(),
-                        DownSampleOneSample(dx=dx, dy=dy, original_dims=True),
+                        DownSampleOneSample(dx=dx, dy=dy, original_dims=original_dims),
                         NormalizeOneSample(),
                         ComplexToRealOneSample(),
                     ),
@@ -104,11 +81,19 @@ if __name__ == "__main__":
                 model_cfg=cfg1.model_config,
                 device=device,
             )
-            # model, _, _, _ = BasicModel.load_pre_train_model(device, model_path)
-            model = A()
+            model, _, _, _ = BasicModel.load_pre_train_model(device, model_path)
+            # model = A()
 
             loss_metric.reset()
             acc.reset()
             validate(model, data_loader["test"], device, loss_metric, acc)
             print(acc.value)
+            print(f"results for dx {dx} dy {dy} ")
             print(loss_metric.value)
+
+
+"""
+{'sr_acc_PSNR': 16.209843890566223, 'sr_acc_MSE': 0.024199546085759915, 'sr_acc_MSSSIM': 0.8070774717316548, 'classifier_acc_ClassifierAccuracy': 0.8561897966159048}
+results for dx 2 dy 2 
+{'total_loss': tensor(0.4360), 'sr_total_loss': 0.08700814418143944, 'sr_loss_L1': 0.08700814418143944, 'classifier_total_loss': 0.3924642714955406, 'classifier_loss_TinyLoss': 0.3924642714955406}
+"""

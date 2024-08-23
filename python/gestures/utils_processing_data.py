@@ -1,3 +1,4 @@
+import numpy as np
 import torch
 import torch.nn.functional as F
 
@@ -236,3 +237,66 @@ class DownSampleBatch(torch.nn.Module):
         interpolated_tensor = torch.complex(interpolated_real, interpolated_imaginary)
 
         return interpolated_tensor
+
+
+class ComplexGaussianNoiseTransform(torch.nn.Module):
+    def __init__(self, zero_pixel_percentage=0.1):
+        super(ComplexGaussianNoiseTransform, self).__init__()
+
+        self.zero_pixel_percentage = zero_pixel_percentage
+
+    def forward(self, data):
+        # data shape: (5, 2, 32, 492)
+        for i in range(data.shape[0]):
+            for j in range(data.shape[1]):
+                data[i, j] = self.process_frame(data[i, j])
+        return data
+
+    def process_frame(self, frame):
+        subframe_h, subframe_w = 10, 41
+        for j in range(3):
+            for i in range(12):
+                subframe = (
+                    frame[
+                        j * subframe_h : (j + 1) * subframe_h,
+                        i * subframe_w : (i + 1) * subframe_w,
+                    ]
+                    .clone()
+                    .detach()
+                )
+                subframe = self.add_gaussian_noise(subframe)
+                subframe = self.randomly_set_pixels(subframe)
+                frame[
+                    j * subframe_h : (j + 1) * subframe_h,
+                    i * subframe_w : (i + 1) * subframe_w,
+                ] = subframe
+        return frame
+
+    def add_gaussian_noise(self, subframe):
+        subframe_shape = subframe.shape
+
+        if subframe.numel() <= 1:
+            # If subframe is too small, return it without modification
+            return subframe
+
+        # Ensure variance is non-zero
+        real_part = torch.normal(
+            subframe.real.mean(), max(subframe.real.std(), 1e-6), subframe_shape
+        )
+        imag_part = torch.normal(
+            subframe.imag.mean(), max(subframe.imag.std(), 1e-6), subframe_shape
+        )
+        noisy_subframe = subframe + (real_part + 1j * imag_part)
+        return noisy_subframe
+
+    def randomly_set_pixels(self, subframe):
+        num_pixels = subframe.numel()
+        num_pixels_to_set = int(self.zero_pixel_percentage * num_pixels)
+        indices = np.random.choice(num_pixels, num_pixels_to_set, replace=False)
+
+        # Convert flat indices to 2D indices
+        indices_2d = np.unravel_index(indices, subframe.shape)
+
+        # Set the selected pixels to 0.5 + 0.5j
+        subframe[indices_2d] = 0.5 + 0.5j
+        return subframe
