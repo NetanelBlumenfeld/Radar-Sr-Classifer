@@ -18,8 +18,8 @@ if __name__ == "__main__":
     pc, data_dir, output_dir, device = get_pc_cgf()
     task = "sr_classifier"  # task = ["sr", "classifier", "sr_classifier"]
     original_dims = True if task == "classifier" else False
-    batch_size = 3
-    epochs = 400
+    batch_size = 30
+    epochs = 700
 
     gestures = [
         "PinchIndex",

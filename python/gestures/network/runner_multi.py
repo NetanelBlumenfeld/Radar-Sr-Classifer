@@ -15,7 +15,7 @@ from torch.utils.data.dataloader import DataLoader
 def train(model, loader_train: DataLoader, device, optimizer, loss_metric, acc_metric):
     model.train()
     num_batches = len(loader_train)
-    break_id = int(num_batches / 3)
+    break_id = int(num_batches / 10)
     for batch_idx, (batch, labels) in enumerate(loader_train):
         batch, labels = model.reshape_to_model_output(batch, labels, device)
         print(batch.shape[-2:])
@@ -28,10 +28,14 @@ def train(model, loader_train: DataLoader, device, optimizer, loss_metric, acc_m
         optimizer.step()
         acc_metric.update(outputs, labels)
         # Update the scale based on your desired condition
-        if (batch_idx + 1) % 2 == 0:  # Change the scale every 10 batches for example
+        if (
+            batch_idx + 1
+        ) % break_id == 0:  # Change the scale every 10 batches for example
             if loader_train.dataset.scale == 2:
                 loader_train.dataset.set_scale(4)
             elif loader_train.dataset.scale == 4:
+                loader_train.dataset.set_scale(8)
+            elif loader_train.dataset.scale == 8:
                 loader_train.dataset.set_scale(2)
             loader_train = DataLoader(loader_train.dataset, batch_size=5, shuffle=True)
             break
