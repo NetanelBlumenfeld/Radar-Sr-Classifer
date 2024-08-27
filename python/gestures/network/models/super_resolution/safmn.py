@@ -161,8 +161,11 @@ class SAFMN(BasicModel):
     def __init__(
         self, dim=36, n_blocks=8, ffn_scale=2.0, upscaling_factor=4, channels=2
     ):
-        self.model_name = "SAFMN"
-        super(SAFMN, self).__init__(self.model_name)
+        super(SAFMN, self).__init__(f"SAFMN_dims_{dim}_nblocks{n_blocks}")
+
+        self.dim = dim
+        self.n_blocks = n_blocks
+        self.model_name = f"SAFMN_dims_{self.dim}_nblocks{self.n_blocks}"
         self.to_feat = nn.Conv2d(channels, dim, 3, 1, 1)
 
         self.feats = nn.Sequential(*[AttBlock(dim, ffn_scale) for _ in range(n_blocks)])
@@ -203,7 +206,7 @@ if __name__ == "__main__":
 
     model = SAFMN(dim=36, n_blocks=8, ffn_scale=2.0, upscaling_factor=4)
     # model = SAFMN(dim=36, n_blocks=12, ffn_scale=2.0, upscaling_factor=2)
-    print(model)
-    print(f"params: {sum(map(lambda x: x.numel(), model.parameters()))}")
-    output = model(x)
-    print(output.shape)
+    print(model.model_name)
+    # print(f"params: {sum(map(lambda x: x.numel(), model.parameters()))}")
+    # output = model(x)
+    # print(output.shape)

@@ -12,6 +12,7 @@ from gestures.utils_processing_data import (
     DopplerMapOneSample,
     DownSampleOneSample,
     NormalizeOneSample,
+    PipeLine,
     ToTensor,
 )
 
@@ -24,7 +25,7 @@ if __name__ == "__main__":
         for dim in [36]:
             batch_size = 30
             dx, dy = 4, 4
-            epochs = 100
+            epochs = 250
 
             gestures = [
                 "PinchIndex",
@@ -40,24 +41,31 @@ if __name__ == "__main__":
                 "PalmHold",
                 "NoHand",
             ]
-            pre_processing_funcs = {
-                "classifier": torch.nn.Sequential(
+            class_pipe = PipeLine(
+                [
                     ToTensor(),
                     DownSampleOneSample(dx=dx, dy=dy, original_dims=original_dims),
                     NormalizeOneSample(),
                     DopplerMapOneSample(),
-                ),
+                ]
+            )
+            sr_pipe_hr = PipeLine(
+                [ToTensor(), NormalizeOneSample(), ComplexToRealOneSample()]
+            )
+            sr_pipe_lr = PipeLine(
+                [
+                    ToTensor(),
+                    ComplexGaussianNoiseTransform(),
+                    DownSampleOneSample(dx=dx, dy=dy, original_dims=original_dims),
+                    NormalizeOneSample(),
+                    ComplexToRealOneSample(),
+                ]
+            )
+            pre_processing_funcs = {
+                "classifier": class_pipe,
                 "sr_classifier": {
-                    "hr": torch.nn.Sequential(
-                        ToTensor(), NormalizeOneSample(), ComplexToRealOneSample()
-                    ),
-                    "lr": torch.nn.Sequential(
-                        ToTensor(),
-                        ComplexGaussianNoiseTransform(),
-                        DownSampleOneSample(dx=dx, dy=dy, original_dims=original_dims),
-                        NormalizeOneSample(),
-                        ComplexToRealOneSample(),
-                    ),
+                    "hr": sr_pipe_hr,
+                    "lr": sr_pipe_lr,
                 },
             }
 
@@ -75,12 +83,11 @@ if __name__ == "__main__":
             # loss_metric.sr_weight = gamma
             model.drln.dim = dim
 
-            # experiment name
-            data_pre_name = f"dsx_{dx}_dsy_{dy}_original_dim_{original_dims}"
             experiment_name = os.path.join(
                 task,
-                f"{model.model_name}_dims_{dim}_{loss_metric.name}",
-                data_pre_name,
+                f"{model.model_name}",
+                f"loss_{loss_metric.name}",
+                f"{sr_pipe_lr.name}",
                 get_time_in_string(),
             )
             print(experiment_name)

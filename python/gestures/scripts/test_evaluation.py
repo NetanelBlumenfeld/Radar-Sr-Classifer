@@ -93,7 +93,9 @@ if __name__ == "__main__":
 
 
 """
-{'sr_acc_PSNR': 16.209843890566223, 'sr_acc_MSE': 0.024199546085759915, 'sr_acc_MSSSIM': 0.8070774717316548, 'classifier_acc_ClassifierAccuracy': 0.8561897966159048}
 results for dx 2 dy 2 
+{'sr_acc_PSNR': 16.209843890566223, 'sr_acc_MSE': 0.024199546085759915, 'sr_acc_MSSSIM': 0.8070774717316548, 'classifier_acc_ClassifierAccuracy': 0.8561897966159048}
 {'total_loss': tensor(0.4360), 'sr_total_loss': 0.08700814418143944, 'sr_loss_L1': 0.08700814418143944, 'classifier_total_loss': 0.3924642714955406, 'classifier_loss_TinyLoss': 0.3924642714955406}
+results for dx 4 dy 4
+
 """

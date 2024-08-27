@@ -1,4 +1,3 @@
-import numpy as np
 import torch
 import torch.nn.functional as F
 
@@ -6,6 +5,7 @@ import torch.nn.functional as F
 class ToTensor(torch.nn.Module):
     def __init__(self):
         super(ToTensor, self).__init__()
+        self.name = "ToTensor"
 
     def forward(self, x) -> torch.Tensor:
         # Convert x to a tensor if it's not already one
@@ -49,6 +49,7 @@ class NormalizeBatch1(torch.nn.Module):
 class NormalizeOneSample(torch.nn.Module):
     def __init__(self):
         super(NormalizeOneSample, self).__init__()
+        self.name = f"normalize"
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         assert x.ndim == 4
@@ -81,6 +82,7 @@ class NormalizeBatch(torch.nn.Module):
 class ComplexToRealOneSample(torch.nn.Module):
     def __init__(self):
         super(ComplexToRealOneSample, self).__init__()
+        self.name = "ComplexToReal"
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         assert x.ndim == 4
@@ -129,6 +131,7 @@ class RealToComplexBatch(torch.nn.Module):
 class DopplerMapOneSample(torch.nn.Module):
     def __init__(self):
         super(DopplerMapOneSample, self).__init__()
+        self.name = f"DopplerMap"
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         assert x.ndim == 4
@@ -154,6 +157,7 @@ class DownSampleOneSample(torch.nn.Module):
         self.dx = dx
         self.dy = dy
         self.original_dims = original_dims
+        self.name = f"DS_x_{dx}_dy_{dy}"
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         assert x.ndim == 4  # (5,2,32,492)
@@ -240,10 +244,15 @@ class DownSampleBatch(torch.nn.Module):
 
 
 class ComplexGaussianNoiseTransform(torch.nn.Module):
-    def __init__(self, zero_pixel_percentage=0.1):
+    def __init__(self, zero_blocks_percentage=0.2, mean=0, std=0.002):
         super(ComplexGaussianNoiseTransform, self).__init__()
+        self.mean = mean
+        self.std = std
+        self.name = (
+            f"gaussian_mean_{mean}_std_{std}_random_block_{zero_blocks_percentage}"
+        )
 
-        self.zero_pixel_percentage = zero_pixel_percentage
+        self.zero_blocks_percentage = zero_blocks_percentage
 
     def forward(self, data):
         # data shape: (5, 2, 32, 492)
@@ -253,23 +262,19 @@ class ComplexGaussianNoiseTransform(torch.nn.Module):
         return data
 
     def process_frame(self, frame):
-        subframe_h, subframe_w = 10, 41
-        for j in range(3):
-            for i in range(12):
-                subframe = (
-                    frame[
-                        j * subframe_h : (j + 1) * subframe_h,
-                        i * subframe_w : (i + 1) * subframe_w,
-                    ]
-                    .clone()
-                    .detach()
-                )
-                subframe = self.add_gaussian_noise(subframe)
-                subframe = self.randomly_set_pixels(subframe)
-                frame[
-                    j * subframe_h : (j + 1) * subframe_h,
-                    i * subframe_w : (i + 1) * subframe_w,
-                ] = subframe
+        frame = self.add_gaussian_noise(frame)
+        subframe_h, subframe_w = 5, 5
+        rows, cols = int(frame.shape[0] / subframe_h), int(frame.shape[1] / subframe_w)
+        num_blocks = rows * cols
+        set_blocks_index = self.set_blocks_index(num_blocks)
+        for i in set_blocks_index:
+            row_num = i // cols
+            col_num = i - row_num * cols
+            frame[
+                row_num * subframe_h : (row_num + 1) * subframe_h,
+                col_num * subframe_w : (col_num + 1) * subframe_w,
+            ] = torch.ones((subframe_h, subframe_w)) * (0.01 + 0.01j)
+
         return frame
 
     def add_gaussian_noise(self, subframe):
@@ -280,23 +285,31 @@ class ComplexGaussianNoiseTransform(torch.nn.Module):
             return subframe
 
         # Ensure variance is non-zero
-        real_part = torch.normal(
-            subframe.real.mean(), max(subframe.real.std(), 1e-6), subframe_shape
-        )
-        imag_part = torch.normal(
-            subframe.imag.mean(), max(subframe.imag.std(), 1e-6), subframe_shape
-        )
+        real_part = torch.normal(self.mean, max(self.std, 1e-6), subframe_shape)
+        imag_part = torch.normal(self.mean, max(self.std, 1e-6), subframe_shape)
         noisy_subframe = subframe + (real_part + 1j * imag_part)
         return noisy_subframe
 
-    def randomly_set_pixels(self, subframe):
-        num_pixels = subframe.numel()
-        num_pixels_to_set = int(self.zero_pixel_percentage * num_pixels)
-        indices = np.random.choice(num_pixels, num_pixels_to_set, replace=False)
+    def set_blocks_index(self, num_blocks):
+        blocks_index = torch.bernoulli(
+            torch.full((1, num_blocks), 1 - self.zero_blocks_percentage)
+        ).squeeze()
+        return torch.nonzero(blocks_index == 0, as_tuple=False).squeeze()
 
-        # Convert flat indices to 2D indices
-        indices_2d = np.unravel_index(indices, subframe.shape)
 
-        # Set the selected pixels to 0.5 + 0.5j
-        subframe[indices_2d] = 0.5 + 0.5j
-        return subframe
+class PipeLine(torch.nn.Module):
+    def __init__(self, pipe: list):
+        super(PipeLine, self).__init__()
+        self.pipe = pipe
+
+    @property
+    def name(self):
+        n = ""
+        for p in self.pipe:
+            n += p.name + "_"
+        return n
+
+    def forward(self, x):
+        for i in self.pipe:
+            x = i(x)
+        return x

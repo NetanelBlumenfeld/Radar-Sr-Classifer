@@ -154,6 +154,8 @@ class RecSRClass(BasicModel):
         new_batch = sequence_length * batch_size * sensors
         inputs = inputs.reshape(new_batch, channels, H, W)
         scale = int(492 / W)
+        if scale == 7:
+            scale = 8
 
         # Apply super resolution in a batched manner
         sr_outputs = None
@@ -162,6 +164,10 @@ class RecSRClass(BasicModel):
         elif scale == 4:
             sr_outputs_mid = self.sr2(inputs)
             sr_outputs = self.sr2(sr_outputs_mid)
+        elif scale == 8:
+            sr_outputs_mid = self.sr2(inputs)
+            sr_outputs = self.sr2(sr_outputs_mid)
+            sr_outputs = self.sr2(sr_outputs)
         else:
             raise ValueError(f"Scale factor {scale} not supported")
 
