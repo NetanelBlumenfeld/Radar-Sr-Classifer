@@ -168,6 +168,7 @@ class RecSRClass(BasicModel):
             sr_outputs_mid = self.sr2(inputs)
             sr_outputs = self.sr2(sr_outputs_mid)
             sr_outputs = self.sr2(sr_outputs)
+            sr_outputs = sr_outputs[:, :, :, 2:494]
         else:
             raise ValueError(f"Scale factor {scale} not supported")
 

@@ -23,7 +23,7 @@ if __name__ == "__main__":
     for x in [1]:
         for dim in [36]:
             batch_size = 30
-            dx, dy = 4, 4
+            dx, dy = 8, 8
             epochs = 70
 
             gestures = [
@@ -96,6 +96,8 @@ if __name__ == "__main__":
 results for dx 2 dy 2 
 {'sr_acc_PSNR': 16.209843890566223, 'sr_acc_MSE': 0.024199546085759915, 'sr_acc_MSSSIM': 0.8070774717316548, 'classifier_acc_ClassifierAccuracy': 0.8561897966159048}
 {'total_loss': tensor(0.4360), 'sr_total_loss': 0.08700814418143944, 'sr_loss_L1': 0.08700814418143944, 'classifier_total_loss': 0.3924642714955406, 'classifier_loss_TinyLoss': 0.3924642714955406}
-results for dx 4 dy 4
+results for dx 8 dy 8
+{'sr_acc_PSNR': 11.716476459372537, 'sr_acc_MSE': 0.06767164327790974, 'sr_acc_MSSSIM': 0.539056995481133, 'classifier_acc_ClassifierAccuracy': 0.47370674275869756}
+{'total_loss': tensor(2.2908), 'sr_total_loss': 0.16144119491279643, 'sr_loss_L1': 0.16144119491279643, 'classifier_total_loss': 2.210086909500958, 'classifier_loss_TinyLoss': 2.210086909500958}
 
 """
