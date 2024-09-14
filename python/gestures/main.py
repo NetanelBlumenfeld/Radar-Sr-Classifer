@@ -55,7 +55,7 @@ if __name__ == "__main__":
             sr_pipe_lr = PipeLine(
                 [
                     ToTensor(),
-                    ComplexGaussianNoiseTransform(),
+                    ComplexGaussianNoiseTransform(zero_blocks_percentage=0.1),
                     DownSampleOneSample(dx=dx, dy=dy, original_dims=original_dims),
                     NormalizeOneSample(),
                     ComplexToRealOneSample(),

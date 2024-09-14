@@ -16,14 +16,14 @@ from gestures.utils_processing_data import (
 )
 
 if __name__ == "__main__":
-    model_path = "/Users/netanelblumenfeld/Desktop/bgu/Msc/code/out/sr_classifier/rec/total_loss.pth"
+    model_path = "/Users/netanelblumenfeld/Desktop/bgu/Msc/code/out/sr_classifier/sr_SAFMN_classifier_TinyRadar_dims_16_sr_loss_L10.5_classifier_loss_TinyLoss1/dsx_1_dsy_4_original_dim_False/2024-08-08_17:48:56/model/total_loss.pth"
     pc, data_dir, output_dir, device = get_pc_cgf()
     task = "sr_classifier"  # task = ["sr", "classifier", "sr_classifier"]
     original_dims = True if task == "classifier" else False
     for x in [1]:
         for dim in [36]:
             batch_size = 30
-            dx, dy = 8, 8
+            dx, dy = 1, 4
             epochs = 70
 
             gestures = [

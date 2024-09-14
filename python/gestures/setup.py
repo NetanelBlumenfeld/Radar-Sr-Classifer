@@ -26,7 +26,7 @@ def get_pc_cgf() -> tuple[str, str, str, torch.device]:
     # TODO: add option for 3080 and 4090
     os_info = platform.system()
     if os_info == "Linux":
-        data_dir = "/mnt/netanelnew/tinyradar_data/"
+        data_dir = "/home/netanel/data/"
         output_dir = "/home/netanel/code/out/"
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         pc = "4090"

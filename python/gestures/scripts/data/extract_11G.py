@@ -62,7 +62,8 @@ instances = 7
 freq = 160
 
 
-datasetPath = "/Users/netanelblumenfeld/Downloads/11G/"
+datasetPath = "/home/netanel/data/11G/"
+# /mnt_ssd3tb/netanel_data
 
 binaryDataSubdir = "data/"
 
