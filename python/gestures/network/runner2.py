@@ -14,6 +14,8 @@ from torch.utils.data.dataloader import DataLoader
 
 def train(model, loader_train, device, optimizer, loss_metric, acc_metric):
     model.train()
+    print(f"start training, dataloder len: {len(loader_train)}")
+    i = 0
     for batch, labels in loader_train:
         batch, labels = model.reshape_to_model_output(batch, labels, device)
         optimizer.zero_grad()
@@ -24,16 +26,16 @@ def train(model, loader_train, device, optimizer, loss_metric, acc_metric):
         loss.backward()  # type: ignore
         optimizer.step()
         acc_metric.update(outputs, labels)
+        if i == 0:
+            print("finish the first epoch")
+            i = 1
 
 
 def validate(model, dataset: DataLoader, device, loss_metric, acc_metric):
     model.eval()
-    i = 0
-    print(len(dataset))
+    print(f"start training, dataloder len: {len(dataset)}")
     with torch.no_grad():
         for batch, labels in dataset:
-            print(i)
-            i += 1
             batch, labels = model.reshape_to_model_output(batch, labels, device)
             outputs = model(batch)
             _ = loss_metric.update(outputs, labels)
